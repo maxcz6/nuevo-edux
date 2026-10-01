@@ -119,9 +119,17 @@ export default {
           700: '#004395',
           800: '#001229',
         },
+        ux: {
+          primary: '#4F46E5',
+          secondary: '#818CF8',
+          accent: '#EA580C',
+          background: '#EEF2FF',
+          card: '#FFFFFF',
+        }
       },
       fontFamily: {
         sans: [
+          'Atkinson Hyperlegible',
           'Plus Jakarta Sans',
           'Fira Sans',
           '-apple-system',
@@ -132,8 +140,8 @@ export default {
           'Arial',
           'sans-serif',
         ],
-        headline: ['Plus Jakarta Sans', '-apple-system', 'sans-serif'],
-        body: ['Plus Jakarta Sans', '-apple-system', 'sans-serif'],
+        headline: ['Crimson Pro', 'Plus Jakarta Sans', '-apple-system', 'sans-serif'],
+        body: ['Atkinson Hyperlegible', 'Plus Jakarta Sans', '-apple-system', 'sans-serif'],
         mono: ['Inter', 'Fira Code', 'ui-monospace', 'monospace'],
       },
       fontSize: {

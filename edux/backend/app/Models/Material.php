@@ -19,6 +19,7 @@ class Material extends Model
         'archivo_url',
         'enlace_externo',
         'visible_desde',
+        'visible_hasta',
         'estado',
     ];
 
@@ -32,6 +33,7 @@ class Material extends Model
 
     protected $casts = [
         'visible_desde' => 'datetime',
+        'visible_hasta' => 'datetime',
     ];
 
     public function getTieneArchivoAttribute(): bool

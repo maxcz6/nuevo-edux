@@ -72,7 +72,7 @@ class ReporteController extends Controller
             }
 
             if ($sumaPesos > 0) {
-                $promedioFinal = round($sumaPonderada, 2);
+                $promedioFinal = round($sumaPonderada / ($sumaPesos / 100), 2);
             } else {
                 $promedioFinal = $calificaciones->isNotEmpty() ? round($calificaciones->avg('nota'), 2) : 0;
             }
@@ -204,7 +204,7 @@ class ReporteController extends Controller
             }
 
             if ($sumaPesos > 0) {
-                $promedioFinal = round($sumaPonderada, 2);
+                $promedioFinal = round($sumaPonderada / ($sumaPesos / 100), 2);
             } else {
                 $promedioFinal = $notasAlumno->isNotEmpty() ? round($notasAlumno->avg('nota'), 2) : 0;
             }
@@ -339,7 +339,7 @@ class ReporteController extends Controller
                     'periodo'  => $matricula->grupoCurso->periodo?->nombre,
                     'seccion'  => $matricula->grupoCurso->seccion?->nombre ?? 'General',
                 ],
-                'constancia_validez' => 'Documento emitido electrónicamente por el sistema académico institucional Modux.',
+                'constancia_validez' => 'Documento emitido electrónicamente por el sistema académico institucional Edux.',
             ],
             'message' => 'OK'
         ]);
@@ -357,7 +357,7 @@ class ReporteController extends Controller
             $tabla .= collect($filas)->map(fn ($fila) => '<tr>' . collect($fila)->map(fn ($valor) => '<td>' . $escape($valor) . '</td>')->implode('') . '</tr>')->implode('');
             $tabla .= '</tbody></table>';
         }
-        $html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><style>body{font-family:DejaVu Sans,sans-serif;color:#172033;font-size:11px}h1{color:#1d4ed8;font-size:20px;border-bottom:2px solid #1d4ed8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#1d4ed8;color:#fff}th,td{border:1px solid #cbd5e1;padding:7px;text-align:left}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><h1>' . $escape($titulo) . '</h1>' . $detalle . $tabla . '<footer>Documento emitido electrónicamente por Modux · ' . now()->format('Y-m-d H:i') . '</footer></body></html>';
+        $html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><style>body{font-family:DejaVu Sans,sans-serif;color:#172033;font-size:11px}h1{color:#1d4ed8;font-size:20px;border-bottom:2px solid #1d4ed8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#1d4ed8;color:#fff}th,td{border:1px solid #cbd5e1;padding:7px;text-align:left}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><h1>' . $escape($titulo) . '</h1>' . $detalle . $tabla . '<footer>Documento emitido electrónicamente por Edux · ' . now()->format('Y-m-d H:i') . '</footer></body></html>';
         return Pdf::loadHTML($html)->setPaper('a4')->download($filename);
     }
 }

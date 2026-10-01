@@ -36,6 +36,27 @@ class GrupoCurso extends Model
         'cerrado_at'   => 'datetime',
     ];
 
+    protected $appends = [
+        'cupos',
+        'cupos_disponibles',
+    ];
+
+    public function getCuposAttribute(): int
+    {
+        return (int) ($this->cupo ?? 0);
+    }
+
+    public function getCuposDisponiblesAttribute(): int
+    {
+        $matriculados = $this->matriculas_count ?? (
+            $this->relationLoaded('matriculas')
+                ? $this->matriculas->where('estado', 'MATRICULADO')->count()
+                : 0
+        );
+
+        return max(0, (int) ($this->cupo ?? 0) - (int) $matriculados);
+    }
+
     protected static function booted(): void
     {
         static::addGlobalScope(new InstitutionScope());
@@ -96,5 +117,10 @@ class GrupoCurso extends Model
     public function asistencias(): HasMany
     {
         return $this->hasMany(Asistencia::class, 'grupo_curso_id');
+    }
+
+    public function solicitudesInclusion(): HasMany
+    {
+        return $this->hasMany(SolicitudInclusionGrupo::class, 'grupo_curso_id');
     }
 }

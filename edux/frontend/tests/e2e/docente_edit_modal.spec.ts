@@ -14,7 +14,7 @@ test.describe('Docentes View — Modal de Edición y Creación', () => {
     // 2. Ir a la vista de Docentes
     await page.goto(`${BASE}/admin/docentes`)
     await page.waitForLoadState('networkidle')
-    await expect(page.locator('h1')).toContainText('Planta Docente')
+    await expect(page.locator('h1')).toContainText('Docentes')
 
     // 3. Abrir modal de Editar Docente en el primer registro
     const editButtons = page.locator('button:has-text("Editar")')

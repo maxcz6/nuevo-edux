@@ -65,8 +65,11 @@ class EntregaController extends Controller
         }
 
         $path = null;
+        $archivoOriginal = null;
         if ($request->hasFile('archivo')) {
-            $path = Storage::disk('local')->putFile('entregas', $request->file('archivo'));
+            $file = $request->file('archivo');
+            $path = Storage::disk('local')->putFile('entregas', $file);
+            $archivoOriginal = $file->getClientOriginalName();
         }
 
         $entrega = EntregaTarea::updateOrCreate(
@@ -76,6 +79,8 @@ class EntregaController extends Controller
             ],
             [
                 'archivo_url'           => $path,
+                'archivo_original'      => $archivoOriginal,
+                'archivo_nombre'        => $archivoOriginal,
                 'comentario_estudiante' => $validated['comentario_estudiante'] ?? $validated['comentario'] ?? null,
                 'fecha_entrega'         => Carbon::now(),
                 'es_tardia'             => $esTardia,
@@ -169,6 +174,6 @@ class EntregaController extends Controller
             abort(response()->json(['message' => 'Archivo no encontrado.', 'error' => 'not_found'], 404));
         }
 
-        return Storage::disk('local')->download($entrega->archivo_url);
+        return Storage::disk('local')->download($entrega->archivo_url, $entrega->archivo_original ?? basename($entrega->archivo_url));
     }
 }

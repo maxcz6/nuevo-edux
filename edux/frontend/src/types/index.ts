@@ -1,4 +1,4 @@
-export type RoleName = 'SUPERADMIN' | 'ADMINISTRADOR' | 'COORDINADOR' | 'DOCENTE' | 'ESTUDIANTE'
+export type RoleName = 'SUPERADMIN' | 'ADMINISTRADOR' | 'COORDINADOR' | 'DOCENTE' | 'ESTUDIANTE' | 'APODERADO'
 
 export interface Institucion {
   id: number
@@ -140,6 +140,7 @@ export interface GrupoCurso {
   cupo?: number
   cupos?: number
   cupos_disponibles?: number
+  matriculas_count?: number
   estado: string
   curso?: Curso
   docente?: Docente
@@ -150,11 +151,30 @@ export interface Matricula {
   id: number
   grupo_curso_id: number
   estudiante_id: number
-  origen: 'MANUAL' | 'AUTOMATICA_SECCION'
+  origen: 'MANUAL' | 'AUTOMATICA_SECCION' | 'INCLUSION_DOCENTE' | string
   fecha_matricula: string
   estado: string
   grupo_curso?: GrupoCurso
   estudiante?: Estudiante
+}
+
+export interface SolicitudInclusion {
+  id: number
+  institucion_id: number
+  grupo_curso_id: number
+  docente_id: number
+  estudiante_id: number
+  coordinador_id?: number
+  motivo: string
+  observaciones_coordinador?: string
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO'
+  fecha_resolucion?: string
+  created_at: string
+  updated_at?: string
+  grupo_curso?: GrupoCurso
+  docente?: Docente
+  estudiante?: Estudiante
+  coordinador?: Usuario
 }
 
 export interface Unidad {
@@ -163,6 +183,10 @@ export interface Unidad {
   titulo: string
   descripcion?: string
   orden: number
+  fecha_inicio?: string
+  fecha_fin?: string
+  visible_desde?: string
+  visible_hasta?: string
   estado: string
   sesiones?: Sesion[]
   materiales?: Material[]
@@ -189,11 +213,13 @@ export interface Material {
   docente_id: number
   titulo: string
   descripcion?: string
-  tipo: 'PDF' | 'DOCX' | 'PPTX' | 'XLSX' | 'IMAGEN' | 'VIDEO' | 'ENLACE' | 'ZIP'
+  tipo: 'PDF' | 'DOCX' | 'PPTX' | 'XLSX' | 'IMAGEN' | 'VIDEO' | 'ENLACE' | 'ZIP' | 'DOCUMENTO'
   archivo_url?: string
   archivo_original?: string
   enlace_externo?: string
   visible_desde?: string
+  visible_hasta?: string
+  tiene_archivo?: boolean
   estado: string
 }
 
@@ -236,6 +262,7 @@ export interface EntregaTarea {
   archivo_url?: string
   archivo_ruta?: string
   archivo_original?: string
+  tiene_archivo?: boolean
   comentario_estudiante?: string
   comentarios_estudiante?: string
   fecha_entrega: string
@@ -260,6 +287,18 @@ export interface Calificacion {
   tipo_evaluacion?: string
   observaciones?: string
   peso_porcentual?: number
+}
+
+export interface ConsolidadoEstudiante {
+  estudiante_id: number
+  codigo: string
+  nombre_completo: string
+  tipo_documento?: string
+  numero_documento?: string
+  notas_por_rubro: Record<string, number>
+  detalle_rubros?: Record<string, { id?: number; nota?: number | null; peso_porcentual?: number | null; tipo_origen?: string; origen_id?: number | null }>
+  promedio_final: number
+  estado: 'APROBADO' | 'DESAPROBADO'
 }
 
 export interface Notificacion {
@@ -334,17 +373,29 @@ export interface Evaluacion {
   docente_id: number
   titulo: string
   instrucciones?: string
+  tipo_evaluacion?: 'QUIZ' | 'ARCHIVO' | 'MIXTO'
+  tiene_archivo_adjunto?: boolean
+  archivo_nombre_original?: string
+  permite_archivo_estudiante?: boolean
   puntaje_maximo: number
   duracion_minutos?: number
   intentos_permitidos: number
   fecha_inicio: string
   fecha_fin: string
-  estado: 'BORRADOR' | 'PROGRAMADA' | 'PUBLICADA' | 'CERRADA'
+  estado: 'BORRADOR' | 'PROGRAMADA' | 'PUBLICADA' | 'CERRADA' | 'OCULTA'
   preguntas_count?: number
+  intentos_count?: number
   preguntas?: Pregunta[]
+  intentos?: IntentoEvaluacion[]
   intentos_realizados?: number
   mejor_nota?: number
   tiene_intento_activo?: boolean
+  intento_activo_id?: number
+  esta_expirada?: boolean
+  ha_iniciado?: boolean
+  revision_disponible?: boolean
+  ultimo_intento_estado?: string
+  ultimo_intento_archivo?: string
 }
 
 export interface Pregunta {
@@ -373,7 +424,13 @@ export interface IntentoEvaluacion {
   fecha_inicio: string
   fecha_fin?: string
   nota?: number
+  archivo_estudiante?: string
+  archivo_estudiante_nombre?: string
+  tiene_archivo_estudiante?: boolean
+  comentario_estudiante?: string
+  retroalimentacion?: string
   estado: 'EN_CURSO' | 'FINALIZADO' | 'ANULADO'
+  estudiante?: Estudiante
 }
 
 export interface ConvocatoriaAdmision {
@@ -498,4 +555,57 @@ export interface CertificadoModular {
   created_at?: string
 }
 
+export interface Pago {
+  id: number
+  numero_comprobante: string
+  tipo_comprobante: 'RECIBO' | 'BOLETA' | 'FACTURA' | 'TICKET'
+  concepto: string
+  monto: number
+  metodo_pago: 'EFECTIVO' | 'TRANSFERENCIA' | 'YAPE' | 'PLIN' | 'TARJETA_DEBITO' | 'TARJETA_CREDITO' | 'DEPOSITO_BANCARIO'
+  numero_operacion?: string | null
+  fecha_pago: string
+  estado: 'PAGADO' | 'ANULADO'
+  motivo_anulacion?: string | null
+  observaciones?: string | null
+  estudiante?: {
+    id: number
+    codigo_estudiante: string
+    nombre_completo: string
+    numero_documento?: string | null
+  } | null
+  registrado_por?: {
+    id: number
+    nombres: string
+    apellido_paterno: string
+  } | null
+}
+
+export interface NuevoPagoPayload {
+  estudiante_id?: number | null
+  matricula_id?: number | null
+  tramite_id?: number | null
+  tipo_comprobante: string
+  concepto: string
+  monto: number
+  metodo_pago: string
+  numero_operacion?: string
+  fecha_pago?: string
+  observaciones?: string
+}
+
+export interface CajaKpis {
+  total_hoy: number
+  total_general: number
+  cantidad_pagos: number
+  cantidad_anulados: number
+  promedio_ticket: number
+}
+
+export interface EstudianteCajaBusqueda {
+  id: number
+  codigo_estudiante: string
+  nombre_completo: string
+  numero_documento?: string | null
+  programa?: string | null
+}
 

@@ -27,6 +27,11 @@ class Estudiante extends Model
         return $this->belongsTo(UnidadAcademica::class, 'unidad_academica_id');
     }
 
+    public function programaEstudios(): BelongsTo
+    {
+        return $this->belongsTo(UnidadAcademica::class, 'unidad_academica_id');
+    }
+
     public function programas(): HasMany
     {
         return $this->hasMany(EstudiantePrograma::class, 'estudiante_id');

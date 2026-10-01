@@ -368,12 +368,16 @@ class AdmisionController extends Controller
     {
         $user = auth()->user();
         $convocatoria = ConvocatoriaAdmision::query()
+            ->with('institucion')
             ->when($user->institucion_id, fn ($query) => $query->where('institucion_id', $user->institucion_id))
             ->findOrFail($convocatoriaId);
 
         $rolEstudiante = Rol::where('nombre', 'ESTUDIANTE')->first();
+        $inst = $convocatoria->institucion;
+        $instSlug = \Illuminate\Support\Str::slug($inst?->nombre_corto ?: ($inst?->codigo ?: 'sam'));
+        $instPrefix = strtoupper($inst?->nombre_corto ?: (\Illuminate\Support\Str::after($inst?->codigo ?? '', '-') ?: 'SAM'));
 
-        return DB::transaction(function () use ($convocatoria, $user, $rolEstudiante) {
+        return DB::transaction(function () use ($convocatoria, $user, $rolEstudiante, $instSlug, $instPrefix) {
             $ingresantes = Postulante::where('convocatoria_id', $convocatoria->id)
                 ->where('condicion', 'ALCANZO_VACANTE')
                 ->whereNull('estudiante_id')
@@ -392,7 +396,7 @@ class AdmisionController extends Controller
                     })->first();
 
                 if (!$usuario) {
-                    $email = $ingresante->email ?: "est.{$ingresante->documento_numero}@sam.edu.pe";
+                    $email = $ingresante->email ?: "est.{$ingresante->documento_numero}@{$instSlug}.edu.pe";
                     $usuario = Usuario::create([
                         'institucion_id' => $convocatoria->institucion_id,
                         'username' => $ingresante->documento_numero,
@@ -413,7 +417,7 @@ class AdmisionController extends Controller
                 }
 
                 // 2. Crear Estudiante
-                $codigoEstudiante = 'SAM-' . $year . '-' . str_pad($ingresante->id, 4, '0', STR_PAD_LEFT);
+                $codigoEstudiante = "{$instPrefix}-{$year}-" . str_pad($ingresante->id, 4, '0', STR_PAD_LEFT);
                 $estudiante = Estudiante::firstOrCreate(
                     [
                         'institucion_id' => $convocatoria->institucion_id,

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Rol;
 use App\Models\Permiso;
+use Illuminate\Support\Facades\DB;
 
 class RolesPermisosSeeder extends Seeder
 {
@@ -14,8 +15,12 @@ class RolesPermisosSeeder extends Seeder
             ['nombre' => 'SUPERADMIN',    'descripcion' => 'Super Administrador del Sistema — acceso global completo',     'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
             ['nombre' => 'ADMINISTRADOR', 'descripcion' => 'Administrador de la Institución — gestión general moderada',   'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
             ['nombre' => 'COORDINADOR',   'descripcion' => 'Coordinador de Programa — gestión de su carrera específica',   'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
+            ['nombre' => 'SECRETARIA',     'descripcion' => 'Secretaria institucional — gestión documental y de trámites',   'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
+            ['nombre' => 'CAJA',          'descripcion' => 'Caja — matrículas, cobros y operaciones de caja',              'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
+            ['nombre' => 'MESA_DE_PARTES','descripcion' => 'Mesa de partes — consulta y seguimiento documental',           'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
             ['nombre' => 'DOCENTE',       'descripcion' => 'Docente — gestión de sus grupos y aula virtual',               'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
             ['nombre' => 'ESTUDIANTE',    'descripcion' => 'Estudiante — acceso a cursos, tareas y notas propias',          'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
+            ['nombre' => 'APODERADO',     'descripcion' => 'Apoderado / Padre de Familia — seguimiento de sus hijos',      'es_sistema' => true, 'estado' => true, 'institucion_id' => null],
         ];
 
         $roles = [];
@@ -40,7 +45,7 @@ class RolesPermisosSeeder extends Seeder
             ['modulo' => 'usuarios', 'codigo' => 'usuarios.eliminar',          'nombre' => 'Desactivar usuarios'],
             ['modulo' => 'usuarios', 'codigo' => 'usuarios.cambiar_password',  'nombre' => 'Cambiar contraseña de cualquier usuario'],
 
-            // ─── Roles y permisos ─────────────────────────────────────────────
+            // ─── Roles y permisos (solo SUPERADMIN) ──────────────────────────
             ['modulo' => 'roles', 'codigo' => 'roles.ver',      'nombre' => 'Ver roles y permisos'],
             ['modulo' => 'roles', 'codigo' => 'roles.crear',    'nombre' => 'Crear roles'],
             ['modulo' => 'roles', 'codigo' => 'roles.editar',   'nombre' => 'Editar roles'],
@@ -147,10 +152,15 @@ class RolesPermisosSeeder extends Seeder
             $permisos[$data['codigo']] = $permiso->id;
         }
 
-        // 1. SUPERADMIN — todo sin excepción
+        // ─────────────────────────────────────────────────────────────────────
+        // SUPERADMIN — todo sin excepción
+        // ─────────────────────────────────────────────────────────────────────
         $roles['SUPERADMIN']->permisos()->sync(array_values($permisos));
 
-        // 2. ADMINISTRADOR — gestión completa de la institución
+        // ─────────────────────────────────────────────────────────────────────
+        // ADMINISTRADOR — gestión completa de la institución, SIN instituciones
+        // ni gestión de roles. Puede cambiar contraseñas pero no de SUPERADMIN.
+        // ─────────────────────────────────────────────────────────────────────
         $adminCodes = [
             'usuarios.ver', 'usuarios.crear', 'usuarios.editar', 'usuarios.eliminar', 'usuarios.cambiar_password',
             'roles.ver',
@@ -181,10 +191,14 @@ class RolesPermisosSeeder extends Seeder
             array_values(array_filter($permisos, fn($c) => in_array($c, $adminCodes), ARRAY_FILTER_USE_KEY))
         );
 
-        // 3. COORDINADOR — restringido a su programa académico
+        // ─────────────────────────────────────────────────────────────────────
+        // COORDINADOR — solo su programa, sin CRUD de usuarios, sin roles,
+        // sin instituciones, sin períodos CRUD, sin admisión CRUD.
+        // Puede ver/vincular docentes y estudiantes a su programa.
+        // ─────────────────────────────────────────────────────────────────────
         $coordinadorCodes = [
             'programas.ver',
-            'docentes.ver', 'docentes.crear', 'docentes.editar',
+            'docentes.ver', 'docentes.crear', 'docentes.editar',   // vincular al programa
             'estudiantes.ver', 'estudiantes.crear', 'estudiantes.editar',
             'periodos.ver',
             'cursos.ver', 'cursos.crear', 'cursos.editar',
@@ -210,7 +224,49 @@ class RolesPermisosSeeder extends Seeder
             array_values(array_filter($permisos, fn($c) => in_array($c, $coordinadorCodes), ARRAY_FILTER_USE_KEY))
         );
 
-        // 4. DOCENTE — sus grupos y aula virtual
+        // ─────────────────────────────────────────────────────────────────────
+        // SECRETARIA — gestión institucional de trámites y documentos.
+        // ─────────────────────────────────────────────────────────────────────
+        $secretariaCodes = [
+            'estudiantes.ver', 'estudiantes.crear', 'estudiantes.editar',
+            'programas.ver',
+            'matriculas.ver', 'matriculas.editar',
+            'tramites.ver', 'tramites.crear', 'tramites.editar',
+            'perfil.ver', 'perfil.editar', 'perfil.cambiar_password',
+        ];
+        $roles['SECRETARIA']->permisos()->sync(
+            array_values(array_filter($permisos, fn($c) => in_array($c, $secretariaCodes), ARRAY_FILTER_USE_KEY))
+        );
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CAJA — consulta y control operativo de matrículas / cobro sin módulo
+        // de pago real. Reutiliza la superficie de matrículas existente.
+        // ─────────────────────────────────────────────────────────────────────
+        $cajaCodes = [
+            'estudiantes.ver',
+            'matriculas.ver', 'matriculas.editar',
+            'tramites.ver',
+            'perfil.ver', 'perfil.editar', 'perfil.cambiar_password',
+        ];
+        $roles['CAJA']->permisos()->sync(
+            array_values(array_filter($permisos, fn($c) => in_array($c, $cajaCodes), ARRAY_FILTER_USE_KEY))
+        );
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MESA_DE_PARTES — consulta documental y seguimiento sin aprobación.
+        // ─────────────────────────────────────────────────────────────────────
+        $mesaDePartesCodes = [
+            'estudiantes.ver',
+            'tramites.ver',
+            'perfil.ver', 'perfil.editar', 'perfil.cambiar_password',
+        ];
+        $roles['MESA_DE_PARTES']->permisos()->sync(
+            array_values(array_filter($permisos, fn($c) => in_array($c, $mesaDePartesCodes), ARRAY_FILTER_USE_KEY))
+        );
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DOCENTE — solo sus grupos asignados. Sin gestión administrativa.
+        // ─────────────────────────────────────────────────────────────────────
         $docenteCodes = [
             'grupos.ver',
             'cursos.ver',
@@ -230,7 +286,10 @@ class RolesPermisosSeeder extends Seeder
             array_values(array_filter($permisos, fn($c) => in_array($c, $docenteCodes), ARRAY_FILTER_USE_KEY))
         );
 
-        // 5. ESTUDIANTE — acceso a sus cursos, tareas y notas
+        // ─────────────────────────────────────────────────────────────────────
+        // ESTUDIANTE — solo lectura de su contenido. Puede entregar tareas
+        // y hacer evaluaciones.
+        // ─────────────────────────────────────────────────────────────────────
         $estudianteCodes = [
             'cursos.ver',
             'grupos.ver',
@@ -252,6 +311,19 @@ class RolesPermisosSeeder extends Seeder
         ];
         $roles['ESTUDIANTE']->permisos()->sync(
             array_values(array_filter($permisos, fn($c) => in_array($c, $estudianteCodes), ARRAY_FILTER_USE_KEY))
+        );
+
+        // ─────────────────────────────────────────────────────────────────────
+        // APODERADO — solo seguimiento de hijos.
+        // ─────────────────────────────────────────────────────────────────────
+        $apoderadoCodes = [
+            'calificaciones.ver',
+            'asistencias.ver',
+            'avisos.ver',
+            'perfil.ver', 'perfil.editar', 'perfil.cambiar_password',
+        ];
+        $roles['APODERADO']->permisos()->sync(
+            array_values(array_filter($permisos, fn($c) => in_array($c, $apoderadoCodes), ARRAY_FILTER_USE_KEY))
         );
     }
 }

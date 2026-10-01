@@ -96,7 +96,9 @@ class TitulacionController extends Controller
             ->findOrFail($validated['programa_id']);
 
         // Generar código de verificación único para validación pública / QR
-        $codigoVerificacion = 'TIT-SAM-' . strtoupper(Str::random(10));
+        $institucion = \App\Models\Institucion::find($institucionId);
+        $instCode = strtoupper($institucion?->nombre_corto ?: (Str::after($institucion?->codigo ?? '', '-') ?: 'SAM'));
+        $codigoVerificacion = 'TIT-' . $instCode . '-' . strtoupper(Str::random(10));
 
         $titulacion = Titulacion::create([
             'institucion_id' => $institucionId,
@@ -298,7 +300,9 @@ class TitulacionController extends Controller
             ->when($user->institucion_id, fn ($query) => $query->where('institucion_id', $user->institucion_id))
             ->findOrFail($validated['programa_id']);
 
-        $codigoVerificacion = 'MOD-SAM-' . strtoupper(Str::random(10));
+        $institucion = \App\Models\Institucion::find($institucionId);
+        $instCode = strtoupper($institucion?->nombre_corto ?: (Str::after($institucion?->codigo ?? '', '-') ?: 'SAM'));
+        $codigoVerificacion = 'MOD-' . $instCode . '-' . strtoupper(Str::random(10));
 
         $certificado = CertificadoModular::create([
             'institucion_id' => $institucionId,

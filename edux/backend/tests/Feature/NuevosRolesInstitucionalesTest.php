@@ -19,9 +19,11 @@ class NuevosRolesInstitucionalesTest extends TestCase
     public function test_los_roles_nuevos_existen_y_tienen_permisos_restringidos(): void
     {
         $esperado = [
-            'SECRETARIA' => ['estudiantes.ver', 'matriculas.ver', 'tramites.ver'],
-            'CAJA' => ['estudiantes.ver', 'matriculas.ver'],
-            'MESA_DE_PARTES' => ['estudiantes.ver', 'tramites.ver'],
+            'SUPERADMIN'    => ['instituciones.ver', 'usuarios.ver', 'roles.ver'],
+            'ADMINISTRADOR' => ['usuarios.ver', 'docentes.ver', 'estudiantes.ver', 'matriculas.ver'],
+            'COORDINADOR'   => ['docentes.ver', 'estudiantes.ver', 'cursos.ver', 'grupos.ver'],
+            'DOCENTE'       => ['aula.ver', 'tareas.crear', 'calificaciones.crear'],
+            'ESTUDIANTE'    => ['aula.ver', 'entregas.crear', 'calificaciones.ver'],
         ];
 
         foreach ($esperado as $nombreRol => $codigos) {

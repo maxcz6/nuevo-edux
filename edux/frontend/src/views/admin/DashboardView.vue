@@ -67,7 +67,7 @@ onMounted(async () => {
   <div class="page-shell space-y-6">
     <PageHeader eyebrow="Resumen institucional" title="Dashboard" description="Una vista rápida del estado académico y los accesos más utilizados." />
 
-    <LoadingState v-if="loading" label="Preparando el resumen institucional…" />
+    <LoadingState v-if="loading" variant="stat-cards" :count="4" label="Preparando el resumen institucional…" />
 
     <div v-else-if="error" class="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-rose-800 text-sm" role="alert">
       {{ error }}
@@ -115,69 +115,69 @@ onMounted(async () => {
       <!-- Stats ribbon: 4 cards estilo EducaCampus -->
       <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <!-- Usuarios -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-md transition-shadow">
+        <div data-testid="stat-card" class="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Usuarios</p>
-            <div class="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Usuarios</p>
+            <div class="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center">
               <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
           </div>
-          <p class="mt-2 text-3xl font-bold font-headline text-slate-900 tracking-tight" aria-label="Total usuarios: {{ stats.total_usuarios }}">
+          <p class="mt-2 text-3xl font-bold font-headline text-slate-900 dark:text-white tracking-tight" aria-label="Total usuarios: {{ stats.total_usuarios }}">
             {{ stats.total_usuarios }}
           </p>
-          <p class="mt-1 text-[11px] text-slate-400 font-medium">Cuentas registradas</p>
+          <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">Cuentas registradas</p>
         </div>
 
         <!-- Docentes -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-md transition-shadow">
+        <div data-testid="stat-card" class="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Docentes Activos</p>
-            <div class="h-9 w-9 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Docentes Activos</p>
+            <div class="h-9 w-9 rounded-xl bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 flex items-center justify-center">
               <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
               </svg>
             </div>
           </div>
-          <p class="mt-2 text-3xl font-bold font-headline text-primary-700 tracking-tight">{{ stats.total_docentes }}</p>
-          <p class="mt-1 text-[11px] text-slate-400 font-medium">Planta docente habilitada</p>
+          <p class="mt-2 text-3xl font-bold font-headline text-primary-700 dark:text-primary-400 tracking-tight">{{ stats.total_docentes }}</p>
+          <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">Planta docente habilitada</p>
         </div>
 
         <!-- Estudiantes -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-md transition-shadow">
+        <div data-testid="stat-card" class="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Estudiantes Activos</p>
-            <div class="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estudiantes Activos</p>
+            <div class="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
               <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
               </svg>
             </div>
           </div>
-          <p class="mt-2 text-3xl font-bold font-headline text-emerald-700 tracking-tight">{{ stats.total_estudiantes }}</p>
-          <p class="mt-1 text-[11px] text-slate-400 font-medium">Alumnos con matrícula</p>
+          <p class="mt-2 text-3xl font-bold font-headline text-emerald-700 dark:text-emerald-400 tracking-tight">{{ stats.total_estudiantes }}</p>
+          <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">Alumnos con matrícula</p>
         </div>
 
         <!-- Grupos -->
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-md transition-shadow">
+        <div data-testid="stat-card" class="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Grupos Activos</p>
-            <div class="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Grupos Activos</p>
+            <div class="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
               <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <p class="mt-2 text-3xl font-bold font-headline text-indigo-700 tracking-tight">{{ stats.grupos_activos }}</p>
-          <p class="mt-1 text-[11px] text-slate-400 font-medium">Cursos en dictado</p>
+          <p class="mt-2 text-3xl font-bold font-headline text-indigo-700 dark:text-indigo-400 tracking-tight">{{ stats.grupos_activos }}</p>
+          <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">Cursos en dictado</p>
         </div>
       </div>
 
       <!-- Accesos rápidos filtrados por rol -->
       <section class="mt-8 pt-2" aria-labelledby="accesos-rapidos-heading">
         <div class="mb-4">
-          <h2 id="accesos-rapidos-heading" class="text-base font-bold font-headline text-slate-900 tracking-tight">Accesos rápidos</h2>
-          <p class="text-xs text-slate-500">Continúa con las tareas habituales de gestión y consulta.</p>
+          <h2 id="accesos-rapidos-heading" class="text-base font-bold font-headline text-slate-900 dark:text-white tracking-tight">Accesos rápidos</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Continúa con las tareas habituales de gestión y consulta.</p>
         </div>
         <div v-if="quickLinks.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <RouterLink

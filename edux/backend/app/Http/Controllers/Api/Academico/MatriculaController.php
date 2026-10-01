@@ -17,12 +17,21 @@ class MatriculaController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
         $query = Matricula::with(['grupoCurso.curso', 'estudiante.usuario'])
             ->when($request->grupo_curso_id, fn($q, $v) => $q->where('grupo_curso_id', $v))
             ->when($request->estudiante_id, fn($q, $v) => $q->where('estudiante_id', $v))
             ->when($request->estado, fn($q, $v) => $q->where('estado', $v));
 
-        $matriculas = $query->paginate($request->get('per_page', 15));
+        if ($user->hasRole('DOCENTE') && !$user->hasAnyRole(['SUPERADMIN', 'ADMINISTRADOR', 'COORDINADOR', 'CAJA', 'SECRETARIA'])) {
+            $docenteId = $user->docente?->id;
+            $query->whereHas('grupoCurso', function ($q) use ($docenteId) {
+                $q->where('docente_id', $docenteId);
+            });
+        }
+
+        $perPage = min((int) $request->get('per_page', 50), 200);
+        $matriculas = $query->paginate($perPage);
 
         return response()->json([
             'data'    => $matriculas->items(),
@@ -155,7 +164,17 @@ class MatriculaController extends Controller
 
     public function show($id)
     {
-        $matricula = Matricula::with(['grupoCurso.curso', 'estudiante.usuario'])->findOrFail($id);
+        $user = auth()->user();
+        $query = Matricula::with(['grupoCurso.curso', 'estudiante.usuario']);
+
+        if ($user->hasRole('DOCENTE') && !$user->hasAnyRole(['SUPERADMIN', 'ADMINISTRADOR', 'COORDINADOR', 'CAJA', 'SECRETARIA'])) {
+            $docenteId = $user->docente?->id;
+            $query->whereHas('grupoCurso', function ($q) use ($docenteId) {
+                $q->where('docente_id', $docenteId);
+            });
+        }
+
+        $matricula = $query->findOrFail($id);
         return response()->json(['data' => $matricula, 'message' => 'OK']);
     }
 

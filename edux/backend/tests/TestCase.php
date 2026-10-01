@@ -9,7 +9,8 @@ abstract class TestCase extends BaseTestCase
     public function createApplication()
     {
         $app = parent::createApplication();
-        $app['config']->set('database.connections.pgsql.database', 'modux_test_db');
+        $testDb = env('DB_DATABASE', 'aula_virtual_testing');
+        $app['config']->set('database.connections.pgsql.database', $testDb);
         return $app;
     }
 }

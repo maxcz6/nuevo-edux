@@ -65,25 +65,25 @@ async function handleSubmit() {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       :aria-label="`Cambiar contraseña de ${nombreCompleto}`"
       @keydown.esc="emit('close')"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-5">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 space-y-5 text-slate-900 dark:text-slate-100 transition-colors">
         <!-- Header -->
-        <div class="flex items-start justify-between">
+        <div class="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h3 class="text-lg font-bold text-gray-900">Cambiar Contraseña</h3>
-            <p class="text-sm text-gray-500 mt-0.5">
-              Usuario: <span class="font-semibold text-gray-700">{{ nombreCompleto }}</span>
+            <h3 class="text-lg font-bold font-headline text-slate-900 dark:text-white">Cambiar Contraseña</h3>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Usuario: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ nombreCompleto }}</span>
             </p>
-            <div class="flex flex-wrap gap-1 mt-1">
+            <div class="flex flex-wrap gap-1 mt-1.5">
               <span
                 v-for="rol in usuario.roles"
                 :key="rol.id"
-                class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
+                class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
               >
                 {{ rol.nombre }}
               </span>
@@ -92,7 +92,7 @@ async function handleSubmit() {
           <button
             type="button"
             @click="emit('close')"
-            class="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label="Cerrar modal"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,7 +104,7 @@ async function handleSubmit() {
         <!-- No permitido si el target es SUPERADMIN y el actor es ADMIN -->
         <div
           v-if="!canChange"
-          class="rounded-lg p-4 bg-red-50 border border-red-200 text-sm text-red-700"
+          class="rounded-xl p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs sm:text-sm text-rose-800 dark:text-rose-200"
           role="alert"
         >
           <strong>Acción no permitida.</strong> Un Administrador no puede cambiar la contraseña de un Superadministrador.
@@ -116,49 +116,39 @@ async function handleSubmit() {
             v-if="msg"
             role="alert"
             :class="[
-              'rounded-lg p-3 text-sm font-medium',
+              'rounded-xl p-3 text-xs sm:text-sm font-medium',
               msg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60'
+                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-900/60'
             ]"
           >
             {{ msg.text }}
           </div>
 
-          <div>
-            <label for="pwd-nueva" class="block text-xs font-semibold text-gray-700 mb-1">
-              Nueva Contraseña *
-            </label>
-            <ProtectedInput
-              id="pwd-nueva"
-              v-model="form.password"
-              type="password"
-              :max-length="255"
-              required
-              :error="errors['password']"
-              class="input-field w-full"
-              aria-label="Nueva contraseña"
-            />
-            <p class="text-xs text-gray-400 mt-1">Mínimo 8 caracteres.</p>
-          </div>
+          <ProtectedInput
+            id="pwd-nueva"
+            v-model="form.password"
+            type="password"
+            label="Nueva Contraseña"
+            :max-length="255"
+            required
+            :error="errors['password']"
+            hint="Mínimo 8 caracteres."
+            aria-label="Nueva contraseña"
+          />
 
-          <div>
-            <label for="pwd-confirm" class="block text-xs font-semibold text-gray-700 mb-1">
-              Confirmar Nueva Contraseña *
-            </label>
-            <ProtectedInput
-              id="pwd-confirm"
-              v-model="form.password_confirmation"
-              type="password"
-              :max-length="255"
-              required
-              :error="errors['password_confirmation']"
-              class="input-field w-full"
-              aria-label="Confirmar nueva contraseña"
-            />
-          </div>
+          <ProtectedInput
+            id="pwd-confirm"
+            v-model="form.password_confirmation"
+            type="password"
+            label="Confirmar Nueva Contraseña"
+            :max-length="255"
+            required
+            :error="errors['password_confirmation']"
+            aria-label="Confirmar nueva contraseña"
+          />
 
-          <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               @click="emit('close')"

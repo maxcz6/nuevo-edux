@@ -96,9 +96,9 @@ const rolLabel = computed(() => {
 })
 
 const rolBadgeClass = computed(() => {
-  if (isSuperAdmin.value)  return 'bg-purple-100 text-purple-800 border-purple-200'
-  if (isAdmin.value)       return 'bg-blue-100 text-blue-800 border-blue-200'
-  return 'bg-gray-100 text-gray-800 border-gray-200'
+  if (isSuperAdmin.value)  return 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
+  if (isAdmin.value)       return 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
 })
 
 onMounted(async () => {
@@ -237,12 +237,13 @@ function logout() {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8f9ff] dark:bg-[#000914]">
       <header class="h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 z-10 gap-4 transition-all">
-        <!-- Left: Mobile hamburger & Desktop collapse toggle -->
+        <!-- Left: Mobile hamburger & Desktop collapse toggle & Breadcrumbs -->
         <div class="flex items-center gap-2.5">
           <button
             @click="isMobileOpen = true"
             class="lg:hidden p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label="Abrir menú de navegación"
+            :aria-expanded="isMobileOpen"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -252,16 +253,26 @@ function logout() {
             @click="isSidebarOpen = !isSidebarOpen"
             class="hidden lg:flex items-center justify-center h-8 w-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
             :aria-label="isSidebarOpen ? 'Colapsar menú lateral' : 'Expandir menú lateral'"
+            :aria-expanded="isSidebarOpen"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          
+          <nav aria-label="Breadcrumb" class="hidden sm:flex items-center ml-2 space-x-2 text-sm text-slate-500 font-medium">
+            <template v-for="(matched, index) in route.matched" :key="matched.path">
+              <span v-if="index > 0" class="text-slate-300 dark:text-slate-600">/</span>
+              <span :class="{'text-slate-900 dark:text-slate-100 font-semibold': index === route.matched.length - 1}">
+                {{ (matched.name?.toString() || matched.path.split('/').pop() || 'Inicio').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+              </span>
+            </template>
+          </nav>
         </div>
 
         <!-- Center: Program Switcher (hidden for coordinador = fixed to their program) -->
         <div v-if="!isCoordinador" class="flex items-center gap-2">
-          <label for="programa-switcher" class="sr-only sm:not-sr-only text-xs font-semibold text-slate-500 whitespace-nowrap">
+          <label for="programa-switcher" class="sr-only sm:not-sr-only text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
             Carrera:
           </label>
           <div class="relative">
@@ -269,7 +280,7 @@ function logout() {
               id="programa-switcher"
               :value="programaStore.selectedProgramaId ?? ''"
               @change="onProgramaChange"
-              class="text-xs font-medium bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 text-slate-800 rounded-xl px-3 py-1.5 pr-8 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 max-w-[200px] sm:max-w-xs truncate cursor-pointer transition-colors"
+              class="text-xs font-medium bg-slate-50 hover:bg-slate-100/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200/90 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-3 py-1.5 pr-8 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 max-w-[200px] sm:max-w-xs truncate cursor-pointer transition-colors"
               aria-label="Filtrar por Programa de Estudios"
             >
               <option value="">Todos los Programas</option>
@@ -283,7 +294,7 @@ function logout() {
             </select>
           </div>
         </div>
-        <div v-else class="text-xs font-semibold text-teal-800 bg-teal-50 border border-teal-200/70 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+        <div v-else class="text-xs font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200/70 dark:border-teal-800/60 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
           <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>
           {{ programaStore.programas.find(p => p.id === programaStore.selectedProgramaId)?.nombre ?? 'Mi Programa' }}
         </div>
@@ -295,11 +306,11 @@ function logout() {
             <div class="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight" data-testid="user-name">
               <span>{{ authStore.user?.nombres }}</span> <span class="hidden sm:inline">{{ authStore.user?.apellido_paterno }}</span>
             </div>
-            <div class="text-[11px] font-medium text-slate-400 leading-tight mt-0.5 hidden sm:block">{{ authStore.user?.institucion?.nombre ?? 'IESTP SAM • Palián' }}</div>
+            <div class="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-tight mt-0.5 hidden sm:block">{{ authStore.user?.institucion?.nombre ?? 'IESTP SAM • Palián' }}</div>
           </div>
           <RouterLink
             to="/admin/perfil"
-            class="rounded-full ring-2 ring-primary-100 hover:ring-primary-300 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            class="rounded-full ring-2 ring-primary-100 dark:ring-primary-900/60 hover:ring-primary-300 dark:hover:ring-primary-700 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             :title="`${authStore.user?.nombres} — Ver perfil`"
           >
             <UserAvatar :user="authStore.user" size="md" />

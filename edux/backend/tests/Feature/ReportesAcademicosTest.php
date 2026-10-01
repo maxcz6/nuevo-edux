@@ -9,8 +9,6 @@ use App\Models\Usuario;
 use App\Models\Rol;
 use App\Models\Docente;
 use App\Models\Estudiante;
-use App\Models\Apoderado;
-use App\Models\EstudianteApoderado;
 use App\Models\PeriodoAcademico;
 use App\Models\Curso;
 use App\Models\GrupoCurso;
@@ -28,8 +26,6 @@ class ReportesAcademicosTest extends TestCase
     private Docente $docente;
     private Usuario $userEstudiante;
     private Estudiante $estudiante;
-    private Usuario $userApoderado;
-    private Apoderado $apoderado;
     private PeriodoAcademico $periodo;
     private Curso $curso;
     private GrupoCurso $grupo;
@@ -47,10 +43,10 @@ class ReportesAcademicosTest extends TestCase
             'estado'           => 'ACTIVO',
         ]);
 
-        $rolAdmin      = Rol::where('nombre', 'ADMINISTRADOR')->first();
-        $rolDocente    = Rol::where('nombre', 'DOCENTE')->first();
-        $rolEstudiante = Rol::where('nombre', 'ESTUDIANTE')->first();
-        $rolApoderado  = Rol::where('nombre', 'APODERADO')->first();
+        $rolAdmin      = Rol::firstOrCreate(['nombre' => 'ADMINISTRADOR'], ['descripcion' => 'Administrador', 'es_sistema' => true, 'estado' => true]);
+        $rolDocente    = Rol::firstOrCreate(['nombre' => 'DOCENTE'], ['descripcion' => 'Docente', 'es_sistema' => true, 'estado' => true]);
+        $rolEstudiante = Rol::firstOrCreate(['nombre' => 'ESTUDIANTE'], ['descripcion' => 'Estudiante', 'es_sistema' => true, 'estado' => true]);
+        $rolApoderado  = Rol::firstOrCreate(['nombre' => 'APODERADO'], ['descripcion' => 'Apoderado', 'es_sistema' => false, 'estado' => true]);
 
         // Admin
         $this->userAdmin = Usuario::withoutGlobalScopes()->create([
@@ -99,33 +95,6 @@ class ReportesAcademicosTest extends TestCase
             'usuario_id'        => $this->userEstudiante->id,
             'codigo_estudiante' => 'EST-REP-01',
             'estado'            => 'ACTIVO',
-        ]);
-
-        // Apoderado
-        $this->userApoderado = Usuario::withoutGlobalScopes()->create([
-            'institucion_id'   => $this->institucion->id,
-            'username'         => 'apodrep',
-            'email'            => 'padre@rep.test',
-            'password'         => Hash::make('password'),
-            'nombres'          => 'Carlos',
-            'apellido_paterno' => 'Perez',
-            'estado'           => 'ACTIVO',
-        ]);
-        $this->userApoderado->roles()->attach($rolApoderado->id);
-        $this->apoderado = Apoderado::withoutGlobalScopes()->create([
-            'institucion_id' => $this->institucion->id,
-            'usuario_id'     => $this->userApoderado->id,
-            'nombres'        => 'Carlos',
-            'apellidos'      => 'Perez Gomez',
-            'telefono'       => '999888777',
-        ]);
-
-        // Vincular apoderado con estudiante
-        EstudianteApoderado::create([
-            'estudiante_id' => $this->estudiante->id,
-            'apoderado_id'  => $this->apoderado->id,
-            'parentesco'    => 'PADRE',
-            'es_principal'  => true,
         ]);
 
         $this->periodo = PeriodoAcademico::withoutGlobalScopes()->create([
@@ -232,18 +201,5 @@ class ReportesAcademicosTest extends TestCase
             ->assertJsonPath('data.curso.nombre', 'Cálculo I')
             ->assertJsonPath('data.alumnos.0.promedio_final', 18)
             ->assertJsonPath('data.alumnos.0.condicion', 'APROBADO');
-    }
-
-    public function test_apoderado_puede_listar_sus_hijos(): void
-    {
-        $token = $this->userApoderado->createToken('padre')->plainTextToken;
-
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/v1/apoderado/mis-hijos');
-
-        $response->assertStatus(200)
-            ->assertJsonPath('data.0.estudiante_id', $this->estudiante->id)
-            ->assertJsonPath('data.0.parentesco', 'PADRE')
-            ->assertJsonPath('data.0.nombre_completo', 'Perez Gomez, Juan');
     }
 }

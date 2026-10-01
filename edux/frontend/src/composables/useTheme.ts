@@ -16,8 +16,19 @@ export function initializeTheme() {
   if (initialized || typeof window === 'undefined') return
 
   const stored = window.localStorage.getItem(STORAGE_KEY)
-  const preferred: Theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  applyTheme(stored === 'dark' || stored === 'light' ? stored : preferred)
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const preferred: Theme = mediaQuery.matches ? 'dark' : 'light'
+
+  applyTheme(stored === 'dark' || stored === 'light' ? (stored as Theme) : preferred)
+
+  // Listen to system changes if user hasn't explicitly set a preference
+  mediaQuery.addEventListener('change', (e) => {
+    const currentStored = window.localStorage.getItem(STORAGE_KEY)
+    if (!currentStored) {
+      applyTheme(e.matches ? 'dark' : 'light')
+    }
+  })
+
   initialized = true
 }
 

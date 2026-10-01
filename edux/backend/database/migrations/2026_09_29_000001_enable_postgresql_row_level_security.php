@@ -45,13 +45,20 @@ return new class extends Migration
                 continue;
             }
 
+            // Solo aplicar política de tenant si la tabla tiene columna institucion_id
+            $hasInstitutionColumn = Schema::hasColumn($table, 'institucion_id');
+
             // 1. Habilitar Row Level Security en la tabla
             DB::statement("ALTER TABLE {$table} ENABLE ROW LEVEL SECURITY;");
+
+            if (!$hasInstitutionColumn) {
+                continue; // Sin columna de tenant no se puede crear la política
+            }
 
             // 2. Política de aislamiento institucional complementaria
             // Permite acceso si es SUPERADMIN o si el institucion_id coincide con el contexto de sesión
             DB::statement("
-                DO $$
+                DO \$\$
                 BEGIN
                     IF NOT EXISTS (
                         SELECT 1 FROM pg_policies 
@@ -67,7 +74,7 @@ return new class extends Migration
                             OR institucion_id = NULLIF(current_setting('app.current_tenant_id', true), '')::bigint
                         );
                     END IF;
-                END $$;
+                END \$\$;
             ");
         }
     }

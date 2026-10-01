@@ -177,11 +177,13 @@ $matriculas = Matricula::with(['estudiante.usuario'])
             'Content-Disposition' => "attachment; filename=\"REGISTRA_ACTA_CONSOLIDADA_{$codigoGrupo}.csv\"",
         ];
 
-        return new StreamedResponse(function () use ($grupo, $matriculas, $codigoGrupo) {
+        $nombreInstitucion = $grupo->institucion?->nombre ?? ($user->institucion?->nombre ?? 'INSTITUCION EDUCATIVA');
+
+        return new StreamedResponse(function () use ($grupo, $matriculas, $codigoGrupo, $nombreInstitucion) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
-            fputcsv($handle, ['INSTITUTO:', 'IESTP SANTIAGO ANTUNEZ DE MAYOLO'], ';');
+            fputcsv($handle, ['INSTITUTO:', $nombreInstitucion], ';');
             fputcsv($handle, ['UNIDAD DIDACTICA:', $grupo->curso?->nombre ?? '', 'CODIGO:', $grupo->curso?->codigo ?? ''], ';');
             fputcsv($handle, ['PERIODO:', $grupo->periodo?->codigo ?? '', 'SECCION/GRUPO:', $codigoGrupo], ';');
             fputcsv($handle, ['DOCENTE:', $grupo->docente?->usuario ? ($grupo->docente->usuario->apellido_paterno . ' ' . $grupo->docente->usuario->nombres) : ''], ';');

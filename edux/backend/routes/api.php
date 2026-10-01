@@ -22,14 +22,17 @@ use App\Http\Controllers\Api\Aula\AvisoController;
 use App\Http\Controllers\Api\Aula\NotificacionController;
 use App\Http\Controllers\Api\Aula\AsistenciaController;
 use App\Http\Controllers\Api\Aula\EvaluacionController;
+use App\Http\Controllers\Api\Academico\SolicitudInclusionController;
 use App\Http\Controllers\Api\Admin\SedeController;
 use App\Http\Controllers\Api\Admin\NivelEducativoController;
 use App\Http\Controllers\Api\Admin\UnidadAcademicaController;
 use App\Http\Controllers\Api\Admin\PlanEstudioController;
+use App\Http\Controllers\Api\Admin\ApoderadoController;
 use App\Http\Controllers\Api\Academico\ReporteController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\AdmisionController;
 use App\Http\Controllers\Api\Admin\TramiteEstudianteController;
+use App\Http\Controllers\Api\Admin\CajaController;
 use App\Http\Controllers\Api\Admin\AmbienteController;
 use App\Http\Controllers\Api\Academico\RegistraExportController;
 use App\Http\Controllers\Api\Admin\TitulacionController;
@@ -64,6 +67,8 @@ Route::prefix('v1')->group(function () {
 
         $healthy = ($dbStatus === 'ok') && ($redisStatus === 'ok') && ($storageStatus === 'ok');
 
+        // La ruta es pública para balanceadores, pero no revela qué dependencia
+        // interna falló ni la versión desplegada.
         return response()->json([
             'status' => $healthy ? 'ok' : 'degraded',
         ], $healthy ? 200 : 503);
@@ -75,6 +80,7 @@ Route::prefix('v1')->group(function () {
 
     // ── Autenticación ─────────────────────────────────────────────────────────
     Route::prefix('auth')->group(function () {
+        // Bug #7: throttle para prevenir fuerza bruta (amplio en local/testing para suites E2E paralelas)
         $loginThrottle = app()->environment('local', 'testing') ? 'throttle:1000,1' : 'throttle:10,1';
         $resetThrottle = app()->environment('local', 'testing') ? 'throttle:1000,1' : 'throttle:5,1';
         Route::post('/login', [AuthController::class, 'login'])
@@ -102,9 +108,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/me/foto', [UsuarioController::class, 'actualizarMiFoto']);
         Route::delete('/me/foto', [UsuarioController::class, 'eliminarMiFoto']);
 
-        // Dashboard stats restringido a personal con roles de gestión y docentes
+        // Dashboard stats restringido a personal administrativo y operativo.
         Route::get('/dashboard/stats', [DashboardController::class, 'stats'])
-            ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,CAJA,MESA_DE_PARTES,DOCENTE');
 
         // ── Instituciones (solo SUPERADMIN) ───────────────────────────────────
         Route::apiResource('instituciones', InstitucionController::class)
@@ -115,11 +121,11 @@ Route::prefix('v1')->group(function () {
             // Usuarios
             Route::apiResource('usuarios', UsuarioController::class)
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR');
-            // Cambiar contraseña de cualquier usuario
+            // Cambiar contraseña de cualquier usuario (SUPERADMIN + ADMINISTRADOR)
             Route::post('usuarios/{id}/cambiar-password', [UsuarioController::class, 'cambiarPassword'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR');
 
-            // Roles y permisos
+            // Roles y permisos — CRUD solo para SUPERADMIN, ADMINISTRADOR y COORDINADOR pueden ver
             Route::get('roles', [RolController::class, 'index'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::get('roles/{rol}', [RolController::class, 'show'])
@@ -133,11 +139,11 @@ Route::prefix('v1')->group(function () {
             Route::post('roles/{rol}/permisos', [RolController::class, 'assignPermissions'])
                 ->middleware('check.role:SUPERADMIN');
 
-            // Docentes
+            // Docentes: Lectura para SECRETARIA; modificación restringida a SUPERADMIN, ADMINISTRADOR, COORDINADOR
             Route::get('docentes', [DocenteController::class, 'index'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA');
             Route::get('docentes/{docente}', [DocenteController::class, 'show'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA');
             Route::post('docentes', [DocenteController::class, 'store'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::put('docentes/{docente}', [DocenteController::class, 'update'])
@@ -147,7 +153,7 @@ Route::prefix('v1')->group(function () {
 
             // Estudiantes
             Route::apiResource('estudiantes', EstudianteController::class)
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,CAJA,MESA_DE_PARTES');
 
             // Sedes y Niveles Educativos
             Route::apiResource('sedes', SedeController::class)
@@ -155,11 +161,13 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('niveles-educativos', NivelEducativoController::class)
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR');
 
-            // Unidades Académicas / Programas de Estudio
+            // Unidades Académicas / Programas de Estudio:
+            // Lectura: SUPERADMIN + ADMINISTRADOR + COORDINADOR + SECRETARIA + CAJA + MESA_DE_PARTES
+            // Escritura (create/update/delete): SUPERADMIN + ADMINISTRADOR únicamente
             Route::get('unidades-academicas', [UnidadAcademicaController::class, 'index'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,CAJA,MESA_DE_PARTES');
             Route::get('unidades-academicas/{unidadAcademica}', [UnidadAcademicaController::class, 'show'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,CAJA,MESA_DE_PARTES');
             Route::post('unidades-academicas', [UnidadAcademicaController::class, 'store'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR');
             Route::match(['put', 'patch'], 'unidades-academicas/{unidadAcademica}', [UnidadAcademicaController::class, 'update'])
@@ -175,7 +183,15 @@ Route::prefix('v1')->group(function () {
             Route::delete('planes-estudio/{plan}/cursos/{planCurso}', [PlanEstudioController::class, 'removerCurso'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
 
-            // Admisión Tecnológica
+            // Apoderados
+            Route::apiResource('apoderados', ApoderadoController::class)
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+            Route::post('apoderados/{apoderado}/estudiantes', [ApoderadoController::class, 'vincularEstudiante'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+            Route::delete('apoderados/{apoderado}/estudiantes/{estudiante}', [ApoderadoController::class, 'desvincularEstudiante'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+
+            // Admisión Tecnológica (Convocatorias, Vacantes, Postulantes, Ranking)
             Route::get('admision/convocatorias', [AdmisionController::class, 'indexConvocatorias'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::post('admision/convocatorias', [AdmisionController::class, 'storeConvocatoria'])
@@ -197,23 +213,38 @@ Route::prefix('v1')->group(function () {
             Route::post('admision/convocatorias/{id}/matricular-ingresantes', [AdmisionController::class, 'matricularIngresantes'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR');
 
-            // Trámites Académicos
             Route::get('tramites', [TramiteEstudianteController::class, 'index'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,MESA_DE_PARTES,ESTUDIANTE,APODERADO');
             Route::get('tramites/{tramite}', [TramiteEstudianteController::class, 'show'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,MESA_DE_PARTES,ESTUDIANTE,APODERADO');
             Route::post('tramites', [TramiteEstudianteController::class, 'store'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,MESA_DE_PARTES,ESTUDIANTE');
             Route::match(['put', 'patch'], 'tramites/{tramite}', [TramiteEstudianteController::class, 'update'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA');
             Route::delete('tramites/{tramite}', [TramiteEstudianteController::class, 'destroy'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,ESTUDIANTE');
+
+            // Módulo de Caja, Pagos y Cobranzas
+            Route::get('caja/resumen', [CajaController::class, 'resumen'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,CAJA');
+            Route::get('caja/pagos', [CajaController::class, 'indexPagos'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,CAJA');
+            Route::post('caja/pagos', [CajaController::class, 'storePago'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,CAJA');
+            Route::get('caja/pagos/{id}', [CajaController::class, 'showPago'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,CAJA');
+            Route::patch('caja/pagos/{id}/anular', [CajaController::class, 'anularPago'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,CAJA');
+            Route::get('caja/estudiantes-buscar', [CajaController::class, 'buscarEstudiantes'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,CAJA');
+            Route::get('caja/operaciones', [CajaController::class, 'operaciones'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,CAJA');
 
             // Ambientes, Talleres y Laboratorios
             Route::apiResource('ambientes', AmbienteController::class)
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
 
-            // Titulación y Libro de Títulos Institucional
+            // Titulación y Libro de Títulos Institucional (Ley N° 30512)
             Route::get('titulacion', [TitulacionController::class, 'indexTitulaciones'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::post('titulacion', [TitulacionController::class, 'storeTitulacion'])
@@ -223,7 +254,7 @@ Route::prefix('v1')->group(function () {
             Route::get('titulacion/exportar/libro-titulos', [TitulacionController::class, 'exportLibroTitulosCsv'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
 
-            // Certificación Modular
+            // Certificación Modular (RVM N° 277-2019-MINEDU)
             Route::get('certificados-modulares', [TitulacionController::class, 'indexCertificados'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::post('certificados-modulares', [TitulacionController::class, 'storeCertificado'])
@@ -243,7 +274,7 @@ Route::prefix('v1')->group(function () {
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
 
             Route::apiResource('grupos', GrupoCursoController::class)
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,SECRETARIA,CAJA');
             Route::post('grupos/{grupo}/cerrar-acta', [GrupoCursoController::class, 'cerrarActa'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
 
@@ -252,9 +283,9 @@ Route::prefix('v1')->group(function () {
 
             // Matrículas
             Route::get('matriculas', [MatriculaController::class, 'index'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,CAJA,SECRETARIA,DOCENTE');
             Route::get('matriculas/{matricula}', [MatriculaController::class, 'show'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,CAJA,SECRETARIA,DOCENTE');
             Route::post('matriculas', [MatriculaController::class, 'store'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
             Route::match(['put', 'patch'], 'matriculas/{matricula}', [MatriculaController::class, 'update'])
@@ -264,13 +295,27 @@ Route::prefix('v1')->group(function () {
             Route::post('matriculas/seccion', [MatriculaController::class, 'matricularSeccion'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
 
+            // Solicitudes de Inclusión de Estudiantes (Docente -> Coordinación)
+            Route::get('grupos/{grupo}/estudiantes-disponibles', [SolicitudInclusionController::class, 'estudiantesDisponibles'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            Route::get('solicitudes-inclusion', [SolicitudInclusionController::class, 'index'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            Route::post('solicitudes-inclusion', [SolicitudInclusionController::class, 'store'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            Route::post('solicitudes-inclusion/{solicitud}/aprobar', [SolicitudInclusionController::class, 'aprobar'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+            Route::post('solicitudes-inclusion/{solicitud}/rechazar', [SolicitudInclusionController::class, 'rechazar'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR');
+            Route::delete('solicitudes-inclusion/{solicitud}', [SolicitudInclusionController::class, 'destroy'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+
             // Reportes Oficiales
             Route::get('reportes/boleta-notas/{estudiante}/{periodo}', [ReporteController::class, 'boletaNotas'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE,APODERADO');
             Route::get('reportes/acta-consolidada/{grupo}', [ReporteController::class, 'actaConsolidada'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
             Route::get('reportes/ficha-matricula/{matricula}', [ReporteController::class, 'fichaMatricula'])
-                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE');
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,ESTUDIANTE,APODERADO');
 
             // Exportaciones Formato MINEDU REGISTRA
             Route::get('exportar/registra-ingresantes/{convocatoria}', [RegistraExportController::class, 'exportarPadronIngresantes'])
@@ -311,7 +356,7 @@ Route::prefix('v1')->group(function () {
             Route::get('unidades/{unidad}/materiales/{material}', [MaterialController::class, 'show']);
             Route::post('unidades/{unidad}/materiales', [MaterialController::class, 'store'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
-            Route::match(['put', 'patch'], 'unidades/{unidad}/materiales/{material}', [MaterialController::class, 'update'])
+            Route::match(['put', 'patch', 'post'], 'unidades/{unidad}/materiales/{material}', [MaterialController::class, 'update'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
             Route::delete('unidades/{unidad}/materiales/{material}', [MaterialController::class, 'destroy'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
@@ -344,6 +389,9 @@ Route::prefix('v1')->group(function () {
             // Calificaciones del grupo
             Route::get('grupos/{grupo}/calificaciones', [CalificacionController::class, 'index']);
             Route::get('grupos/{grupo}/calificaciones/consolidado', [CalificacionController::class, 'consolidado']);
+            Route::get('grupos/{grupo}/calificaciones/exportar', [CalificacionController::class, 'exportar']);
+            Route::post('grupos/{grupo}/calificaciones/guardar-lote', [CalificacionController::class, 'guardarLote'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
             Route::get('grupos/{grupo}/calificaciones/{calificacion}', [CalificacionController::class, 'show']);
             Route::post('grupos/{grupo}/calificaciones', [CalificacionController::class, 'store'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
@@ -379,17 +427,37 @@ Route::prefix('v1')->group(function () {
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
             Route::delete('grupos/{grupo}/evaluaciones/{evaluacion}', [EvaluacionController::class, 'destroy'])
                 ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            Route::get('evaluaciones/{evaluacion}/descargar-adjunto', [EvaluacionController::class, 'descargarAdjunto'])
+                ->name('evaluaciones.descargar-adjunto');
+            Route::post('evaluaciones/{evaluacion}/preguntas', [EvaluacionController::class, 'agregarPregunta'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
+            Route::delete('evaluaciones/{evaluacion}/preguntas/{pregunta}', [EvaluacionController::class, 'eliminarPregunta'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
 
             // Intentos de evaluación
             Route::post('evaluaciones/{evaluacion}/iniciar-intento', [EvaluacionController::class, 'iniciarIntento'])
                 ->middleware('check.role:ESTUDIANTE');
             Route::post('evaluaciones/{evaluacion}/intentos/{intento}/enviar', [EvaluacionController::class, 'enviarRespuestas'])
                 ->middleware('check.role:ESTUDIANTE');
+            Route::post('evaluaciones/{evaluacion}/intentos/{intento}/subir-archivo', [EvaluacionController::class, 'subirArchivoIntento'])
+                ->middleware('check.role:ESTUDIANTE');
+            Route::get('evaluaciones/{evaluacion}/intentos/{intento}/descargar-archivo', [EvaluacionController::class, 'descargarArchivoEstudiante'])
+                ->name('evaluaciones.descargar-archivo-estudiante');
+            Route::get('evaluaciones/{evaluacion}/intentos/{intento}/revision', [EvaluacionController::class, 'revisionIntento'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE,ESTUDIANTE');
+            Route::match(['put', 'patch', 'post'], 'evaluaciones/{evaluacion}/intentos/{intento}/calificar', [EvaluacionController::class, 'calificarIntento'])
+                ->middleware('check.role:SUPERADMIN,ADMINISTRADOR,COORDINADOR,DOCENTE');
 
             // Notificaciones del usuario
             Route::get('notificaciones', [NotificacionController::class, 'index']);
             Route::patch('notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
             Route::post('notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas']);
+        });
+
+        // ── Portal Apoderados ──────────────────────────────────────────────────
+        Route::prefix('apoderado')->group(function () {
+            Route::get('mis-hijos', [ApoderadoController::class, 'misHijos'])
+                ->middleware('check.role:APODERADO,SUPERADMIN,ADMINISTRADOR');
         });
     });
 });

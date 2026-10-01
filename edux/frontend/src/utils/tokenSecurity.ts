@@ -1,6 +1,6 @@
-import { decodeJwt } from 'jose'
+import { decodeJwt, decodeProtectedHeader, jwtVerify, type JWTPayload, type KeyLike } from 'jose'
 
-export interface TokenClaims {
+export interface TokenClaims extends JWTPayload {
   sub?: string
   iss?: string
   aud?: string | string[]
@@ -22,6 +22,30 @@ export function isJwtFormat(token: string): boolean {
 }
 
 /**
+ * Inspecciona los encabezados protegidos del JWT usando JOSE.
+ * Detecta y previene ataques de tipo "alg: none" o algoritmos no seguros.
+ */
+export function inspectJwtHeader(token: string): { alg?: string; typ?: string; [key: string]: unknown } | null {
+  if (!isJwtFormat(token)) return null
+  try {
+    return decodeProtectedHeader(token)
+  } catch (err) {
+    console.warn('[Security] No se pudo leer el header del JWT:', err)
+    return null
+  }
+}
+
+/**
+ * Valida que el algoritmo del JWT sea seguro (rechaza alg: 'none').
+ */
+export function isSecureAlgorithm(token: string, allowedAlgorithms = ['HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512']): boolean {
+  const header = inspectJwtHeader(token)
+  if (!header || !header.alg) return false
+  if (header.alg.toLowerCase() === 'none') return false
+  return allowedAlgorithms.includes(header.alg)
+}
+
+/**
  * Decodifica de forma segura los claims del token usando JOSE.
  * Si es un token opaco (ej. Sanctum ID|hash), retorna null sin arrojar error.
  */
@@ -34,6 +58,36 @@ export function decodeTokenClaims(token: string): TokenClaims | null {
   } catch (err) {
     console.warn('[Security] Token no pudo ser decodificado como JWT:', err)
     return null
+  }
+}
+
+/**
+ * Verifica criptográficamente la firma del JWT usando la clave secreta o pública con JOSE.
+ */
+export async function verifyJwtSignature(
+  token: string,
+  secretOrPublicKey: Uint8Array | KeyLike,
+  options?: {
+    issuer?: string | string[]
+    audience?: string | string[]
+    currentDate?: Date
+    maxTokenAge?: string
+  }
+): Promise<{ isValid: boolean; payload: TokenClaims | null; error?: string }> {
+  if (!isJwtFormat(token)) {
+    return { isValid: false, payload: null, error: 'Token format is not JWT' }
+  }
+
+  // Prevenir ataques alg: none
+  if (!isSecureAlgorithm(token)) {
+    return { isValid: false, payload: null, error: 'Insecure or rejected algorithm' }
+  }
+
+  try {
+    const result = await jwtVerify(token, secretOrPublicKey, options)
+    return { isValid: true, payload: result.payload as TokenClaims }
+  } catch (err) {
+    return { isValid: false, payload: null, error: (err as Error).message }
   }
 }
 
@@ -53,7 +107,7 @@ export function isTokenExpired(token: string, bufferSeconds = 10): boolean {
 }
 
 /**
- * Sanitizador estricto de entradas de usuario para prevenir XSS y CRLF Injection.
+ * Sanitizador estricto de entradas de usuario para prevenir XSS, SQLi strings y CRLF Injection.
  */
 export function sanitizeInput(
   raw: unknown,
@@ -61,12 +115,13 @@ export function sanitizeInput(
     trim?: boolean
     removeNewlines?: boolean
     maxLength?: number
+    escapeHtml?: boolean
   } = {}
 ): string {
   if (raw === null || raw === undefined) return ''
   let str = String(raw)
 
-  // 1. Eliminar caracteres de control nulos
+  // 1. Eliminar caracteres de control nulos (Null Byte Injection)
   str = str.replace(/\0/g, '')
 
   // 2. CRLF Injection prevention para inputs de una sola línea (emails, DNIs, nombres)
@@ -74,12 +129,22 @@ export function sanitizeInput(
     str = str.replace(/[\r\n]+/g, '')
   }
 
-  // 3. Trim por defecto
+  // 3. Escape de caracteres HTML sensibles si se solicita
+  if (options.escapeHtml) {
+    str = str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+  }
+
+  // 4. Trim por defecto
   if (options.trim ?? true) {
     str = str.trim()
   }
 
-  // 4. Limitar longitud máxima para prevenir desbordamientos o payloads extensos
+  // 5. Limitar longitud máxima para prevenir desbordamientos o payloads extensos
   if (options.maxLength && str.length > options.maxLength) {
     str = str.slice(0, options.maxLength)
   }

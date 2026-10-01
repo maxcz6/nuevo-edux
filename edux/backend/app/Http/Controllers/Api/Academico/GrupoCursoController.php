@@ -10,6 +10,7 @@ use App\Models\PeriodoAcademico;
 use App\Models\Seccion;
 use App\Models\Audit;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GrupoCursoController extends Controller
 {
@@ -17,6 +18,7 @@ class GrupoCursoController extends Controller
     {
         $user = auth()->user();
         $query = GrupoCurso::with(['curso', 'docente.usuario', 'periodo'])
+            ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'MATRICULADO')])
             ->when($user->institucion_id, fn ($query) => $query->where('institucion_id', $user->institucion_id));
 
         if ($user->hasRole('COORDINADOR')) {
@@ -53,13 +55,18 @@ class GrupoCursoController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('DOCENTE') && $user->docente) {
+        if ($user->hasRole('DOCENTE')) {
+            if (!$user->docente) {
+                abort(response()->json(['message' => 'No tienes una ficha docente activa.', 'error' => 'forbidden'], 403));
+            }
             $grupos = GrupoCurso::with(['curso', 'periodo'])
+                ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'MATRICULADO')])
                 ->where('docente_id', $user->docente->id)
                 ->where('estado', 'ACTIVO')
                 ->get();
         } elseif ($user->hasRole('ESTUDIANTE') && $user->estudiante) {
             $grupos = GrupoCurso::with(['curso', 'periodo', 'docente.usuario'])
+                ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'MATRICULADO')])
                 ->whereHas('matriculas', function ($q) use ($user) {
                     $q->where('estudiante_id', $user->estudiante->id)
                       ->where('estado', 'MATRICULADO');
@@ -67,14 +74,21 @@ class GrupoCursoController extends Controller
                 ->where('estado', 'ACTIVO')
                 ->get();
         } elseif ($user->hasRole('COORDINADOR')) {
+            if (!$user->unidad_academica_id) {
+                abort(response()->json(['message' => 'No tienes un programa de estudios asignado.', 'error' => 'forbidden'], 403));
+            }
             $grupos = GrupoCurso::with(['curso', 'periodo', 'docente.usuario'])
-                ->whereHas('curso', fn ($q) => $q->where('unidad_academica_id', $user->unidad_academica_id ?? 0))
+                ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'MATRICULADO')])
+                ->whereHas('curso', fn ($q) => $q->where('unidad_academica_id', $user->unidad_academica_id))
+                ->where('estado', 'ACTIVO')
+                ->get();
+        } elseif ($user->hasRole('ADMINISTRADOR') || $user->hasRole('SUPERADMIN')) {
+            $grupos = GrupoCurso::with(['curso', 'periodo', 'docente.usuario'])
+                ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'MATRICULADO')])
                 ->where('estado', 'ACTIVO')
                 ->get();
         } else {
-            $grupos = GrupoCurso::with(['curso', 'periodo', 'docente.usuario'])
-                ->where('estado', 'ACTIVO')
-                ->get();
+            abort(response()->json(['message' => 'No tienes acceso a grupos de cursos.', 'error' => 'forbidden'], 403));
         }
 
         return response()->json(['data' => $grupos, 'message' => 'OK']);
@@ -131,12 +145,21 @@ class GrupoCursoController extends Controller
                     }
                 },
             ],
-            'codigo_grupo' => 'nullable|string|max:30',
+            'codigo_grupo' => [
+                'required', 'string', 'max:30',
+                Rule::unique('grupos_curso', 'codigo_grupo')
+                    ->where('institucion_id', $institucionId)
+                    ->where('periodo_id', $request->periodo_id)
+                    ->where('curso_id', $request->curso_id),
+            ],
             'turno'       => 'nullable|in:MANANA,TARDE,NOCHE,VIRTUAL',
             'aula'        => 'nullable|string|max:50',
             'cupo'        => 'nullable|integer|min:1|max:500',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin'   => 'nullable|date|after_or_equal:fecha_inicio',
+        ], [
+            'codigo_grupo.unique'   => 'Ya existe un grupo con ese código para este curso y período académico.',
+            'codigo_grupo.required' => 'El código del grupo es obligatorio (ej: A, B, 1).',
         ]);
 
         if ($user->hasRole('COORDINADOR') && $user->unidad_academica_id) {
@@ -185,13 +208,22 @@ class GrupoCursoController extends Controller
                     }
                 },
             ],
-            'codigo_grupo' => 'sometimes|string|max:30',
+            'codigo_grupo' => [
+                'sometimes', 'string', 'max:30',
+                Rule::unique('grupos_curso', 'codigo_grupo')
+                    ->where('institucion_id', $institucionId)
+                    ->where('periodo_id', $grupo->periodo_id)
+                    ->where('curso_id', $grupo->curso_id)
+                    ->ignore($grupo->id),
+            ],
             'turno'        => 'sometimes|in:MANANA,TARDE,NOCHE,VIRTUAL',
             'aula'         => 'nullable|string|max:50',
             'cupo'         => 'nullable|integer|min:1',
             'estado'       => 'sometimes|in:ACTIVO,INACTIVO,FINALIZADO',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin'    => 'nullable|date',
+        ], [
+            'codigo_grupo.unique' => 'Ya existe un grupo con ese código para este curso y período académico.',
         ]);
 
         $grupo->update($validated);
@@ -262,6 +294,32 @@ class GrupoCursoController extends Controller
             'cerrado_at'  => now(),
             'cerrado_por' => $user->id,
         ]);
+
+        // Actualizar el estado de las matriculas según rendimiento
+        $matriculas = $grupo->matriculas()->where('estado', 'MATRICULADO')->get();
+        $calificacionesGrupo = \App\Models\Calificacion::where('grupo_curso_id', $grupo->id)->get();
+
+        foreach ($matriculas as $mat) {
+            $califs = $calificacionesGrupo->where('estudiante_id', $mat->estudiante_id);
+            $sumaPonderada = 0;
+            $sumaPesos = 0;
+            foreach ($califs as $c) {
+                $peso = (float)($c->peso_porcentual ?? 0);
+                if ($peso > 0) {
+                    $sumaPonderada += ((float)$c->nota * ($peso / 100));
+                    $sumaPesos += $peso;
+                }
+            }
+
+            if ($sumaPesos > 0) {
+                $promedio = round($sumaPonderada / ($sumaPesos / 100), 2);
+            } else {
+                $promedio = $califs->isNotEmpty() ? round($califs->avg('nota'), 2) : 0;
+            }
+
+            $nuevoEstado = ($promedio >= 11) ? 'FINALIZADO' : 'DESAPROBADO';
+            $mat->update(['estado' => $nuevoEstado]);
+        }
 
         Audit::create([
             'institucion_id'     => $grupo->institucion_id,

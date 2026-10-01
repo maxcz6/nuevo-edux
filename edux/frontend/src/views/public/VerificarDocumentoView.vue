@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import axios from 'axios'
+import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
 interface TituladoInfo {
   apellidos_nombres: string
@@ -86,35 +87,38 @@ async function verifyCode(code: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-between text-gray-800">
+  <div class="min-h-screen bg-slate-50 dark:bg-[#000914] flex flex-col justify-between text-slate-800 dark:text-slate-100 transition-colors duration-200">
     <!-- Header público -->
-    <header class="bg-white border-b border-gray-200 shadow-xs">
+    <header class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs">
       <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-primary-700 text-white font-black text-xl flex items-center justify-center shadow-xs">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-700 to-primary-900 text-white font-black text-xl flex items-center justify-center shadow-xs">
             M
           </div>
           <div>
-            <h1 class="text-base font-bold text-gray-900 leading-tight">Portal de Consulta Pública de Documentos</h1>
-            <p class="text-xs text-gray-500">IESTP "Santiago Antúnez de Mayolo" — Huancayo</p>
+            <h1 class="text-base font-bold font-headline text-slate-900 dark:text-white leading-tight">Portal de Consulta Pública de Documentos</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">IESTP "Santiago Antúnez de Mayolo" — Huancayo</p>
           </div>
         </div>
 
-        <router-link to="/login" class="text-xs font-semibold text-primary-600 hover:text-primary-800 flex items-center gap-1">
-          <span>Ingreso al Sistema</span>
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-          </svg>
-        </router-link>
+        <div class="flex items-center gap-3">
+          <ThemeToggle />
+          <RouterLink to="/login" class="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 flex items-center gap-1">
+            <span>Ingreso al Sistema</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+          </RouterLink>
+        </div>
       </div>
     </header>
 
     <!-- Main Content -->
     <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6">
       <!-- Search Card -->
-      <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-xs">
-        <h2 class="text-lg font-bold text-gray-900 mb-1">Verificación de Autenticidad Institucional</h2>
-        <p class="text-sm text-gray-500 mb-4">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <h2 class="text-lg font-bold font-headline text-slate-900 dark:text-white mb-1">Verificación de Autenticidad Institucional</h2>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
           Ingrese el código único alfanumérico impreso en el Título Profesional Técnico o Certificado Modular emitido conforme a la Ley N° 30512.
         </p>
 
@@ -124,12 +128,12 @@ async function verifyCode(code: string) {
             type="text"
             placeholder="Ej: TIT-SAM-2026-AGRO-042 o MOD-SAM-..."
             required
-            class="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-base font-mono uppercase focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            class="input-field flex-1 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base font-mono uppercase focus:ring-2 focus:ring-primary-500 focus:outline-none"
           />
           <button
             type="submit"
             :disabled="loading"
-            class="px-6 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold shadow-xs disabled:opacity-50 transition-colors"
+            class="px-6 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold shadow-xs disabled:opacity-50 transition-colors cursor-pointer"
           >
             {{ loading ? 'Verificando...' : 'Verificar Documento' }}
           </button>
@@ -137,9 +141,9 @@ async function verifyCode(code: string) {
       </div>
 
       <!-- Not Found Alert -->
-      <div v-if="notFoundMessage" class="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-rose-800 space-y-2">
+      <div v-if="notFoundMessage" class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-6 text-rose-800 dark:text-rose-200 space-y-2">
         <div class="flex items-center gap-2 font-bold text-base">
-          <svg class="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Documento No Encontrado
@@ -148,9 +152,9 @@ async function verifyCode(code: string) {
       </div>
 
       <!-- Result Card -->
-      <div v-if="doc" class="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden">
+      <div v-if="doc" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
         <!-- Badge Header -->
-        <div class="bg-primary-900 text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="bg-gradient-to-r from-[#001229] to-[#081b33] text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800">
           <div>
             <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
               <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
@@ -158,116 +162,116 @@ async function verifyCode(code: string) {
               </svg>
               Documento Oficial Auténtico
             </div>
-            <h3 class="text-xl font-black tracking-tight">
+            <h3 class="text-xl font-black font-headline tracking-tight">
               {{ doc.tipo_documento === 'TITULO_PROFESIONAL_TECNICO' ? 'TÍTULO PROFESIONAL TÉCNICO' : 'CERTIFICADO MODULAR OFICIAL' }}
             </h3>
-            <p class="text-xs text-primary-200 mt-0.5">{{ doc.institucion }}</p>
+            <p class="text-xs text-slate-300 mt-0.5">{{ doc.institucion }}</p>
           </div>
 
           <div class="text-right">
-            <div class="text-xs text-primary-200">Código de Verificación</div>
-            <div class="font-mono text-sm font-bold text-white tracking-widest bg-primary-800/80 px-3 py-1 rounded-lg border border-primary-700">
+            <div class="text-xs text-slate-300">Código de Verificación</div>
+            <div class="font-mono text-sm font-bold text-white tracking-widest bg-white/10 px-3 py-1 rounded-lg border border-white/20 mt-1">
               {{ doc.datos_registro?.codigo_verificacion || doc.datos_modulo?.codigo_verificacion }}
             </div>
           </div>
         </div>
 
         <!-- Details Grid -->
-        <div class="p-6 space-y-6">
+        <div class="p-6 space-y-6 text-slate-800 dark:text-slate-200">
           <!-- Person Information -->
-          <div class="border-b pb-4">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Titular del Documento</h4>
-            <div class="text-xl font-extrabold text-gray-900">
+          <div class="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Titular del Documento</h4>
+            <div class="text-xl font-extrabold text-slate-900 dark:text-white">
               {{ (doc.titulado || doc.estudiante)?.apellidos_nombres }}
             </div>
-            <div class="text-sm text-gray-500 mt-0.5">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {{ (doc.titulado || doc.estudiante)?.documento_tipo }}: {{ (doc.titulado || doc.estudiante)?.documento_numero || 'Registrado' }}
             </div>
           </div>
 
           <!-- Academic Program -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 border-b pb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
-              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Programa de Estudios</h4>
-              <div class="text-base font-bold text-primary-800">{{ doc.programa_estudio }}</div>
-              <div class="text-xs text-gray-500">Nivel Formativo: Profesional Técnico (3 años)</div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Programa de Estudios</h4>
+              <div class="text-base font-bold text-primary-700 dark:text-primary-400">{{ doc.programa_estudio }}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Nivel Formativo: Profesional Técnico (3 años)</div>
             </div>
 
             <div v-if="doc.tipo_documento === 'TITULO_PROFESIONAL_TECNICO'">
-              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Modalidad de Titulación</h4>
-              <div class="text-sm font-semibold text-gray-800">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Modalidad de Titulación</h4>
+              <div class="text-sm font-semibold text-slate-800 dark:text-slate-200">
                 {{ doc.datos_registro?.modalidad_titulacion?.replace(/_/g, ' ') }}
               </div>
             </div>
 
             <div v-if="doc.tipo_documento === 'CERTIFICADO_MODULAR'">
-              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Módulo Formativo</h4>
-              <div class="text-sm font-semibold text-gray-800">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Módulo Formativo</h4>
+              <div class="text-sm font-semibold text-slate-800 dark:text-slate-200">
                 Módulo {{ doc.datos_modulo?.numero_modulo }}: {{ doc.datos_modulo?.nombre_modulo }}
               </div>
             </div>
           </div>
 
           <!-- Registry / Academic Details -->
-          <div v-if="doc.tipo_documento === 'TITULO_PROFESIONAL_TECNICO'" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl text-xs">
+          <div v-if="doc.tipo_documento === 'TITULO_PROFESIONAL_TECNICO'" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl text-xs border border-slate-100 dark:border-slate-800">
             <div>
-              <span class="text-gray-500 block">N° Libro</span>
-              <strong class="text-sm text-gray-900 font-mono">{{ doc.datos_registro?.numero_libro }}</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">N° Libro</span>
+              <strong class="text-sm text-slate-900 dark:text-white font-mono">{{ doc.datos_registro?.numero_libro }}</strong>
             </div>
             <div>
-              <span class="text-gray-500 block">N° Folio</span>
-              <strong class="text-sm text-gray-900 font-mono">{{ doc.datos_registro?.numero_folio }}</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">N° Folio</span>
+              <strong class="text-sm text-slate-900 dark:text-white font-mono">{{ doc.datos_registro?.numero_folio }}</strong>
             </div>
             <div>
-              <span class="text-gray-500 block">N° Registro</span>
-              <strong class="text-sm text-gray-900 font-mono">{{ doc.datos_registro?.numero_registro }}</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">N° Registro</span>
+              <strong class="text-sm text-slate-900 dark:text-white font-mono">{{ doc.datos_registro?.numero_registro }}</strong>
             </div>
             <div>
-              <span class="text-gray-500 block">N° Título</span>
-              <strong class="text-sm text-gray-900 font-mono">{{ doc.datos_registro?.numero_titulo }}</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">N° Título</span>
+              <strong class="text-sm text-slate-900 dark:text-white font-mono">{{ doc.datos_registro?.numero_titulo }}</strong>
             </div>
           </div>
 
-          <div v-if="doc.tipo_documento === 'CERTIFICADO_MODULAR'" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl text-xs">
+          <div v-if="doc.tipo_documento === 'CERTIFICADO_MODULAR'" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl text-xs border border-slate-100 dark:border-slate-800">
             <div>
-              <span class="text-gray-500 block">Créditos Académicos</span>
-              <strong class="text-sm text-gray-900">{{ doc.datos_modulo?.creditos }} cr.</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">Créditos Académicos</span>
+              <strong class="text-sm text-slate-900 dark:text-white">{{ doc.datos_modulo?.creditos }} cr.</strong>
             </div>
             <div>
-              <span class="text-gray-500 block">Horas Teoría / Práctica</span>
-              <strong class="text-sm text-gray-900 font-mono">{{ doc.datos_modulo?.horas_teoria }}T / {{ doc.datos_modulo?.horas_practica }}P</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">Horas Teoría / Práctica</span>
+              <strong class="text-sm text-slate-900 dark:text-white font-mono">{{ doc.datos_modulo?.horas_teoria }}T / {{ doc.datos_modulo?.horas_practica }}P</strong>
             </div>
             <div class="col-span-2">
-              <span class="text-gray-500 block">Horas EFSRT (Prácticas Pre-prof.)</span>
-              <strong class="text-sm text-emerald-700 font-bold">{{ doc.datos_modulo?.horas_efsrt }} Horas Aprobadas</strong>
+              <span class="text-slate-500 dark:text-slate-400 block">Horas EFSRT (Prácticas Pre-prof.)</span>
+              <strong class="text-sm text-emerald-600 dark:text-emerald-400 font-bold">{{ doc.datos_modulo?.horas_efsrt }} Horas Aprobadas</strong>
             </div>
           </div>
 
           <!-- Resolutions and Dates -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-gray-600">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <span class="text-gray-400 block font-medium">Resolución Directoral</span>
-              <strong class="text-gray-900 font-mono text-xs">
+              <span class="text-slate-400 dark:text-slate-500 block font-medium">Resolución Directoral</span>
+              <strong class="text-slate-900 dark:text-white font-mono text-xs">
                 {{ doc.datos_registro?.resolucion_directoral || doc.datos_modulo?.resolucion_directoral || 'Conforme a norma' }}
               </strong>
             </div>
             <div>
-              <span class="text-gray-400 block font-medium">Fecha de Emisión</span>
-              <strong class="text-gray-900">
+              <span class="text-slate-400 dark:text-slate-500 block font-medium">Fecha de Emisión</span>
+              <strong class="text-slate-900 dark:text-white">
                 {{ doc.datos_registro?.fecha_emision || doc.datos_modulo?.fecha_emision }}
               </strong>
             </div>
             <div>
-              <span class="text-gray-400 block font-medium">Registro MINEDU / REGISTRA</span>
-              <strong class="text-primary-700 font-mono">
+              <span class="text-slate-400 dark:text-slate-500 block font-medium">Registro MINEDU / REGISTRA</span>
+              <strong class="text-primary-600 dark:text-primary-400 font-mono">
                 {{ doc.datos_registro?.codigo_minedu || 'Homologado Institucional' }}
               </strong>
             </div>
           </div>
 
           <!-- Institutional Footer Note -->
-          <div class="p-3 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-900 flex items-center gap-2">
-            <svg class="w-4 h-4 text-blue-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
             </svg>
             <span>
@@ -279,7 +283,7 @@ async function verifyCode(code: string) {
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-gray-200 bg-white py-4 text-center text-xs text-gray-500">
+    <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 text-center text-xs text-slate-500 dark:text-slate-400">
       IESTP "Santiago Antúnez de Mayolo" &copy; {{ new Date().getFullYear() }} — Sistema Integrado de Gestión Institucional Modux
     </footer>
   </div>

@@ -46,6 +46,7 @@ const emit = defineEmits<{
 
 const showPassword = ref(false)
 const inputId = computed(() => props.id || `protected-input-${Math.random().toString(36).substring(2, 9)}`)
+const effectiveTestId = computed(() => props.dataTestid || (attrs['data-testid'] as string) || props.id || undefined)
 const effectiveType = computed(() => {
   if (props.type === 'password') {
     return showPassword.value ? 'text' : 'password'
@@ -56,7 +57,7 @@ const effectiveType = computed(() => {
 function handleInput(event: Event) {
   const target = event.target as HTMLInputElement
   const sanitized = sanitizeInput(target.value, {
-    trim: false, // Don't trim while typing so user can type spaces
+    trim: false,
     removeNewlines: !props.allowNewlines,
     maxLength: props.maxLength
   })
@@ -66,7 +67,7 @@ function handleInput(event: Event) {
 function handleBlur(event: FocusEvent) {
   const target = event.target as HTMLInputElement
   const sanitized = sanitizeInput(target.value, {
-    trim: props.type !== 'password', // Trim on blur except passwords
+    trim: props.type !== 'password',
     removeNewlines: !props.allowNewlines,
     maxLength: props.maxLength
   })
@@ -78,11 +79,11 @@ function handleBlur(event: FocusEvent) {
 <template>
   <div class="space-y-1" :class="attrs.class" :style="(attrs.style as any)">
     <div class="flex justify-between items-center" v-if="label">
-      <label :for="inputId" class="block text-sm font-medium text-gray-700">
+      <label :for="inputId" class="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
         {{ label }}
         <span v-if="required" class="text-rose-500 font-bold" aria-hidden="true">*</span>
       </label>
-      <span v-if="maxLength && String(modelValue).length > maxLength * 0.8" class="text-xs text-gray-400 font-mono">
+      <span v-if="maxLength && String(modelValue).length > maxLength * 0.8" class="text-xs text-slate-400 font-mono">
         {{ String(modelValue).length }}/{{ maxLength }}
       </span>
     </div>
@@ -98,7 +99,7 @@ function handleBlur(event: FocusEvent) {
         :disabled="disabled"
         :maxlength="maxLength"
         :autocomplete="autocomplete"
-        :data-testid="dataTestid || (attrs['data-testid'] as string)"
+        :data-testid="effectiveTestId"
         :aria-invalid="!!error"
         :aria-describedby="error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined"
         v-bind="filteredAttrs"
@@ -106,12 +107,12 @@ function handleBlur(event: FocusEvent) {
         @blur="handleBlur"
         @focus="$emit('focus', $event)"
         :class="[
-          'block w-full rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed',
+          'block w-full rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 disabled:bg-slate-100 dark:disabled:bg-slate-800/80 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed',
           type === 'password' ? 'pr-10' : 'px-3.5',
           'py-2.5',
           error
-            ? 'border-rose-300 text-rose-900 placeholder-rose-300 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/20'
-            : 'border-gray-300 text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:ring-primary-500 bg-white'
+            ? 'border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100 placeholder-rose-300 dark:placeholder-rose-500/70 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/30'
+            : 'border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-primary-500 focus:ring-primary-500 bg-white dark:bg-slate-800'
         ]"
       />
 
@@ -122,7 +123,7 @@ function handleBlur(event: FocusEvent) {
         @click="showPassword = !showPassword"
         :aria-label="showPassword ? 'Ocultar contraseña' : 'Ver contraseña'"
         tabindex="-1"
-        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus:text-primary-600"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none focus:text-primary-600 dark:focus:text-primary-400"
       >
         <svg v-if="!showPassword" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -135,7 +136,7 @@ function handleBlur(event: FocusEvent) {
     </div>
 
     <!-- Error Message -->
-    <p v-if="error" :id="`${inputId}-error`" role="alert" class="text-xs font-medium text-rose-600 mt-1 flex items-center gap-1">
+    <p v-if="error" :id="`${inputId}-error`" role="alert" class="text-xs font-medium text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
       <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
       </svg>
@@ -143,7 +144,7 @@ function handleBlur(event: FocusEvent) {
     </p>
 
     <!-- Hint / Info -->
-    <p v-else-if="hint" :id="`${inputId}-hint`" class="text-xs text-gray-500 mt-1">
+    <p v-else-if="hint" :id="`${inputId}-hint`" class="text-xs text-slate-500 dark:text-slate-400 mt-1">
       {{ hint }}
     </p>
   </div>

@@ -4,61 +4,40 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Usuario;
 use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\GrupoCurso;
 use App\Models\PeriodoAcademico;
-use App\Models\UnidadAcademica;
 
 /**
- * DashboardController — Estadísticas para el panel de administración y coordinación.
+ * DashboardController — Estadísticas reales para el panel de administración.
  *
- * Filtra automáticamente por institución y, en caso de COORDINADOR, por programa de estudios.
+ * Todos los conteos están filtrados por la institución del usuario autenticado
+ * mediante el InstitutionScope aplicado a cada modelo.
  */
 class DashboardController extends Controller
 {
     public function stats(Request $request)
     {
-        $user = $request->user();
-        $isCoordinador = $user->hasRole('COORDINADOR') && $user->unidad_academica_id;
+        $institucionId = $request->user()->institucion_id;
 
         // Periodo activo
         $periodoActivo = PeriodoAcademico::where('estado', 'ACTIVO')->first();
 
-        // Consultas base
-        $docentesQuery = Docente::where('estado', 'ACTIVO');
-        $estudiantesQuery = Estudiante::where('estado', 'ACTIVO');
-        $gruposQuery = GrupoCurso::where('estado', 'ACTIVO')
-            ->when($periodoActivo, fn ($q) => $q->where('periodo_id', $periodoActivo->id));
-
-        // Filtro específico para COORDINADOR
-        if ($isCoordinador) {
-            $docentesQuery->where('unidad_academica_id', $user->unidad_academica_id);
-            $estudiantesQuery->where('unidad_academica_id', $user->unidad_academica_id);
-            $gruposQuery->whereHas('curso', fn ($q) => $q->where('unidad_academica_id', $user->unidad_academica_id));
-        }
-
-        $programa = null;
-        if ($isCoordinador) {
-            $programa = UnidadAcademica::find($user->unidad_academica_id);
-        }
-
         $stats = [
-            'total_usuarios'    => $isCoordinador ? ($docentesQuery->count() + $estudiantesQuery->count()) : Usuario::count(),
-            'total_docentes'    => $docentesQuery->count(),
-            'total_estudiantes' => $estudiantesQuery->count(),
-            'grupos_activos'    => $gruposQuery->count(),
+            'total_usuarios'    => Usuario::count(),
+            'total_docentes'    => Docente::where('estado', 'ACTIVO')->count(),
+            'total_estudiantes' => Estudiante::where('estado', 'ACTIVO')->count(),
+            'grupos_activos'    => GrupoCurso::where('estado', 'ACTIVO')
+                ->when($periodoActivo, fn ($q) => $q->where('periodo_id', $periodoActivo->id))
+                ->count(),
             'periodo_activo'    => $periodoActivo ? [
                 'id'     => $periodoActivo->id,
                 'nombre' => $periodoActivo->nombre,
                 'codigo' => $periodoActivo->codigo,
                 'estado' => $periodoActivo->estado,
-            ] : null,
-            'programa'          => $programa ? [
-                'id'     => $programa->id,
-                'nombre' => $programa->nombre,
-                'codigo' => $programa->codigo,
             ] : null,
         ];
 

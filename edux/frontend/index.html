@@ -15,8 +15,23 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap"
     />
     <title>Modux - Portal Académico Institucional</title>
+    <script>
+      (function() {
+        try {
+          const stored = localStorage.getItem('modux-theme');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-[#f8f9ff] text-[#0b1c30] antialiased selection:bg-[#0058be] selection:text-white font-['Plus_Jakarta_Sans',sans-serif]">
+  <body class="bg-surface text-on-surface dark:bg-[#000914] dark:text-[#f8f9ff] antialiased selection:bg-primary-600 selection:text-white font-['Atkinson_Hyperlegible','Plus_Jakarta_Sans',sans-serif]">
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

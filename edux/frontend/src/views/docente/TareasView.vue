@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router'
 import { tareasApi, entregasApi } from '@/api'
 import type { Tarea, EntregaTarea } from '@/types'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import SkeletonList from '@/components/ui/SkeletonList.vue'
 
 const route = useRoute()
 const grupoId = Number(route.params.id)
@@ -162,8 +164,34 @@ async function downloadEntrega(entrega: EntregaTarea) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    // Clean up slightly later
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000)
   } catch (error) {
     alert('Error descargando entrega')
+  }
+}
+
+async function previewEntrega(entrega: EntregaTarea) {
+  try {
+    const filename = (entrega.archivo_original ?? 'entrega').toLowerCase()
+    
+    // Si no es un formato previsualizable en navegador, descargarlo
+    if (filename.endsWith('.doc') || filename.endsWith('.docx') || filename.endsWith('.zip')) {
+      return downloadEntrega(entrega)
+    }
+
+    const res = await entregasApi.descargar(entrega.id)
+    
+    let type = 'application/octet-stream'
+    if (filename.endsWith('.pdf')) type = 'application/pdf'
+    else if (filename.endsWith('.png')) type = 'image/png'
+    else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) type = 'image/jpeg'
+    
+    const blob = new Blob([res.data], { type })
+    const url = window.URL.createObjectURL(blob)
+    window.open(url, '_blank')
+  } catch (error) {
+    alert('Error previsualizando entrega')
   }
 }
 
@@ -206,35 +234,34 @@ onMounted(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-            Portal Docente
-          </span>
-          <span class="text-xs text-slate-500 dark:text-slate-400">Actividades y Evaluaciones</span>
-        </div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mt-1">
-          Actividades del Curso
-        </h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Cree tareas, adjunte guías (PDF, Word), proporcione pautas metodológicas y califique entregas.
-        </p>
-      </div>
-
-      <button @click="openCreateModal" class="btn-primary inline-flex items-center gap-2 shrink-0">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Nueva Actividad
-      </button>
-    </div>
+    <!-- Header institucional unificado -->
+    <PageHeader 
+      eyebrow="Cátedra Activa" 
+      title="Actividades del Curso" 
+      description="Cree actividades de aprendizaje, adjunte guías didácticas (PDF, Word, enlaces), establezca plazos y califique las entregas estudiantiles."
+    >
+      <template #actions>
+        <RouterLink
+          :to="`/docente/grupos/${grupoId}/aula`"
+          class="btn-secondary inline-flex items-center gap-1.5 text-xs py-2 px-3 font-semibold rounded-lg shadow-xs"
+          title="Ir al Aula Virtual"
+        >
+          <svg class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Aula Virtual
+        </RouterLink>
+        <button @click="openCreateModal" class="btn-primary inline-flex items-center gap-2 shrink-0">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva Actividad
+        </button>
+      </template>
+    </PageHeader>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-    </div>
+    <SkeletonList v-if="loading" :items="4" />
 
     <!-- Lista de Actividades -->
     <div v-else class="grid gap-4">
@@ -481,72 +508,175 @@ onMounted(() => {
     <BaseModal
       :open="openEntregasModal"
       @close="openEntregasModal = false; selectedEntrega = null"
-      size="lg"
+      size="xl"
       title="Entregas de los Estudiantes"
     >
-      <div v-if="entregas.length === 0" class="text-center py-6 text-slate-500 dark:text-slate-400">
+      <div v-if="entregas.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
         No hay entregas registradas para esta actividad.
       </div>
-      <div v-else class="space-y-4">
-        <div
-          v-for="entrega in entregas"
-          :key="entrega.id"
-          class="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/70 dark:bg-slate-950/60 space-y-2"
-        >
-          <div class="flex justify-between items-start gap-2">
-            <div>
-              <p class="font-bold text-sm text-slate-900 dark:text-slate-100">
+      <div v-else class="flex flex-col md:flex-row gap-6 h-[60vh] min-h-[400px]">
+        <!-- Left Pane: List of Students -->
+        <div class="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-4 md:pb-0 md:pr-4 overflow-y-auto space-y-2 custom-scrollbar">
+          <div
+            v-for="entrega in entregas"
+            :key="entrega.id"
+            @click="openCalificar(entrega)"
+            :class="[
+              'p-3 cursor-pointer rounded-xl border transition-all duration-200',
+              selectedEntrega?.id === entrega.id 
+                ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-200 dark:border-primary-800/60 shadow-sm' 
+                : 'bg-white dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-primary-300 dark:hover:border-primary-700/50 hover:bg-slate-50 dark:hover:bg-slate-900/60'
+            ]"
+          >
+            <div class="flex justify-between items-start mb-1">
+              <p class="font-bold text-sm text-slate-900 dark:text-slate-100 truncate max-w-[80%]">
                 {{ entrega.estudiante?.usuario?.apellido_paterno || entrega.estudiante?.apellido_paterno }} {{ entrega.estudiante?.usuario?.nombres || entrega.estudiante?.nombres }}
               </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                Entregado: {{ new Date(entrega.fecha_entrega!).toLocaleString() }}
-                <span v-if="entrega.es_tardia" class="text-rose-600 dark:text-rose-400 font-semibold">• Tardía</span>
-              </p>
+              <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                :class="(entrega.nota !== null && entrega.nota !== undefined) || (entrega.calificacion !== null && entrega.calificacion !== undefined) ? 'bg-emerald-500' : 'bg-amber-400'">
+              </div>
             </div>
-            <span
-              :class="(entrega.nota !== null && entrega.nota !== undefined) || (entrega.calificacion !== null && entrega.calificacion !== undefined) ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'"
-              class="px-2.5 py-0.5 text-xs font-semibold rounded-full"
-            >
-              {{ (entrega.nota ?? entrega.calificacion) !== null && (entrega.nota ?? entrega.calificacion) !== undefined ? `Nota: ${entrega.nota ?? entrega.calificacion}` : 'Sin calificar' }}
-            </span>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mb-2 truncate">
+              {{ new Date(entrega.fecha_entrega!).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) }}
+              <span v-if="entrega.es_tardia" class="text-rose-600 dark:text-rose-400 font-semibold ml-1">• Tardía</span>
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold"
+                :class="(entrega.nota !== null && entrega.nota !== undefined) || (entrega.calificacion !== null && entrega.calificacion !== undefined) ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'">
+                {{ (entrega.nota ?? entrega.calificacion) !== null && (entrega.nota ?? entrega.calificacion) !== undefined ? `${entrega.nota ?? entrega.calificacion} pts` : 'Pendiente' }}
+              </span>
+              <span v-if="entrega.tiene_archivo || entrega.archivo_ruta || entrega.archivo_url" class="text-slate-400 dark:text-slate-500">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+              </span>
+            </div>
           </div>
+        </div>
 
-          <p v-if="entrega.comentario_estudiante || entrega.comentarios_estudiante" class="text-xs text-slate-700 dark:text-slate-300 italic">
-            "{{ entrega.comentario_estudiante || entrega.comentarios_estudiante }}"
-          </p>
-
-          <div class="flex items-center gap-3 pt-1">
-            <button
-              v-if="entrega.tiene_archivo || entrega.archivo_ruta || entrega.archivo_url"
-              @click="downloadEntrega(entrega)"
-              class="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Descargar Archivo Entregado
-            </button>
-            <button @click="openCalificar(entrega)" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-              Calificar / Retroalimentar
-            </button>
+        <!-- Right Pane: Submission Details and Grading Form -->
+        <div class="w-full md:w-2/3 pl-0 md:pl-2 flex flex-col h-full overflow-y-auto custom-scrollbar pr-2 pb-2">
+          <div v-if="!selectedEntrega" class="flex-1 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-sm text-center">
+            <svg class="w-12 h-12 mb-3 text-slate-300 dark:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Seleccione un estudiante de la lista<br/>para ver su entrega y calificar
           </div>
           
-          <!-- Calificar inline form -->
-          <div v-if="selectedEntrega?.id === entrega.id" class="mt-3 p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg space-y-3">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nota (0 - 20)</label>
-                <input v-model="calificarForm.calificacion" type="number" step="0.5" min="0" max="20" class="input-field text-sm py-1.5" />
+          <div v-else class="space-y-6 flex-1 flex flex-col">
+            <!-- Student Header -->
+            <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 shrink-0">
+              <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded-full flex items-center justify-center font-bold text-lg shrink-0">
+                {{ (selectedEntrega.estudiante?.usuario?.nombres || selectedEntrega.estudiante?.nombres || 'E')[0] }}{{ (selectedEntrega.estudiante?.usuario?.apellido_paterno || selectedEntrega.estudiante?.apellido_paterno || '')[0] }}
               </div>
-              <div class="md:col-span-2">
-                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Comentario / Feedback Docente</label>
-                <input v-model="calificarForm.comentarios" type="text" placeholder="Retroalimentación al estudiante..." class="input-field text-sm py-1.5" />
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-slate-100 truncate">
+                  {{ selectedEntrega.estudiante?.usuario?.nombres || selectedEntrega.estudiante?.nombres }} {{ selectedEntrega.estudiante?.usuario?.apellido_paterno || selectedEntrega.estudiante?.apellido_paterno }}
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {{ new Date(selectedEntrega.fecha_entrega!).toLocaleString() }}
+                  <span v-if="selectedEntrega.es_tardia" class="px-1.5 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded text-[10px] font-bold ml-1 uppercase shrink-0">Tardía</span>
+                </p>
               </div>
             </div>
-            <div class="flex justify-end gap-2">
-              <button @click="selectedEntrega = null" class="btn-secondary py-1 px-3 text-xs">Cancelar</button>
-              <button @click="submitCalificacion" class="btn-primary py-1 px-3 text-xs">Guardar Calificación</button>
+
+            <!-- Submission Content -->
+            <div class="space-y-4 flex-1">
+              <div v-if="selectedEntrega.comentario_estudiante || selectedEntrega.comentarios_estudiante" class="space-y-1.5">
+                <h4 class="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Mensaje del Estudiante</h4>
+                <div class="p-3.5 bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-300 italic relative">
+                  <span class="text-2xl text-slate-200 dark:text-slate-700 absolute top-1 left-2 font-serif select-none">"</span>
+                  <p class="pl-5 relative z-10 whitespace-pre-line">{{ selectedEntrega.comentario_estudiante || selectedEntrega.comentarios_estudiante }}</p>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <h4 class="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Archivos Adjuntos</h4>
+                <div v-if="selectedEntrega.tiene_archivo || selectedEntrega.archivo_ruta || selectedEntrega.archivo_url" class="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="p-2.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {{ selectedEntrega.archivo_original || selectedEntrega.archivo_nombre || 'Archivo Entregado' }}
+                      </p>
+                      <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Documento Adjunto</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button @click="previewEntrega(selectedEntrega)" class="btn-secondary text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-sm">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Ver
+                    </button>
+                    <button @click="downloadEntrega(selectedEntrega)" class="btn-primary text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-sm">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Descargar
+                    </button>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-slate-500 dark:text-slate-400 py-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-center">
+                  El estudiante no adjuntó ningún archivo.
+                </div>
+              </div>
             </div>
+
+            <!-- Grading Section -->
+            <div class="mt-auto pt-5 border-t border-slate-200 dark:border-slate-800 shrink-0">
+              <h4 class="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Evaluación del Docente
+              </h4>
+              <div class="bg-primary-50/50 dark:bg-primary-950/20 border border-primary-100 dark:border-primary-900/50 rounded-xl p-4 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div class="sm:col-span-1">
+                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Nota (0-20)
+                    </label>
+                    <div class="relative">
+                      <input 
+                        v-model="calificarForm.calificacion" 
+                        type="number" 
+                        step="0.5" 
+                        min="0" 
+                        max="20" 
+                        class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg p-2.5 pl-3 pr-10 text-sm font-semibold focus:ring-2 focus:ring-primary-500" 
+                      />
+                      <span class="absolute right-3 top-2.5 text-xs font-bold text-slate-400">/ 20</span>
+                    </div>
+                  </div>
+                  <div class="sm:col-span-3">
+                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Retroalimentación (Feedback)
+                    </label>
+                    <textarea 
+                      v-model="calificarForm.comentarios" 
+                      rows="2" 
+                      placeholder="Escriba aquí sus observaciones o comentarios para el estudiante..." 
+                      class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary-500 custom-scrollbar"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="flex justify-end pt-1">
+                  <button @click="submitCalificacion" class="btn-primary text-sm py-2 px-5 w-full sm:w-auto shadow-md">
+                    Guardar Evaluación
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

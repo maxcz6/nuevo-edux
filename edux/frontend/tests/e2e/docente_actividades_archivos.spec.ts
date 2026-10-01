@@ -78,9 +78,9 @@ test.describe('Docente — Actividades con Archivos, Comentarios y Recursos', ()
     const btnTareas = page.locator('button', { hasText: 'Tareas' })
     await btnTareas.click()
 
-    // 4. Verificar que se visualizan las indicaciones docentes y el botón de descarga de material
+    // 4. Verificar que se visualizan las indicaciones docentes y el botón de descarga del adjunto
     await expect(page.locator('text=Indicaciones y Comentarios del Docente:').first()).toBeVisible()
-    const descargarBtn = page.locator('button:has-text("Descargar Material")').first()
+    const descargarBtn = page.locator('button:has-text("Descargar Guía de Trabajo")').first()
     await expect(descargarBtn).toBeVisible()
   })
 })

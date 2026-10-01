@@ -19,6 +19,8 @@ use App\Models\GrupoCurso;
 use App\Models\Matricula;
 use App\Models\Unidad;
 use App\Models\Tarea;
+use App\Models\Apoderado;
+use App\Models\EstudianteApoderado;
 use App\Models\EstudiantePrograma;
 use App\Models\PlanEstudio;
 use App\Models\ConvocatoriaAdmision;
@@ -73,8 +75,12 @@ class InstitucionDemoSeeder extends Seeder
         $rolSuperAdmin = Rol::where('nombre', 'SUPERADMIN')->first();
         $rolAdmin      = Rol::where('nombre', 'ADMINISTRADOR')->first();
         $rolCoord      = Rol::where('nombre', 'COORDINADOR')->first();
+        $rolSecretaria = Rol::where('nombre', 'SECRETARIA')->first();
+        $rolCaja       = Rol::where('nombre', 'CAJA')->first();
+        $rolMesa       = Rol::where('nombre', 'MESA_DE_PARTES')->first();
         $rolDocente    = Rol::where('nombre', 'DOCENTE')->first();
         $rolEstudiante = Rol::where('nombre', 'ESTUDIANTE')->first();
+        $rolApoderado  = Rol::where('nombre', 'APODERADO')->first();
 
         // ── 3. Los 8 Programas Oficiales de Estudio del IESTP SAM ─────────
         $programasData = [
@@ -130,7 +136,7 @@ class InstitucionDemoSeeder extends Seeder
 
         // ── 5. Superadministrador ─────────────────────────────────────────
         $superAdmin = Usuario::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'superadmin@modux.demo'],
+            ['email' => 'superadmin@edux.demo'],
             [
                 'institucion_id'   => $institucion->id,
                 'username'         => 'superadmin',
@@ -147,7 +153,7 @@ class InstitucionDemoSeeder extends Seeder
 
         // ── 6. Administrador General del Instituto ───────────────────────
         $admin = Usuario::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'admin@modux.demo'],
+            ['email' => 'admin@edux.demo'],
             [
                 'institucion_id'   => $institucion->id,
                 'username'         => 'admin',
@@ -162,10 +168,58 @@ class InstitucionDemoSeeder extends Seeder
             $admin->roles()->sync([$rolAdmin->id]);
         }
 
+        // ── 7. Secretaría, Caja y Mesa de Partes ──────────────────────────
+        $secretaria = Usuario::withoutGlobalScopes()->updateOrCreate(
+            ['email' => 'secretaria@edux.demo'],
+            [
+                'institucion_id'   => $institucion->id,
+                'username'         => 'secretaria',
+                'password'         => Hash::make('Secretaria2026!'),
+                'nombres'          => 'María',
+                'apellido_paterno' => 'Rojas',
+                'apellido_materno' => 'Núñez',
+                'estado'           => 'ACTIVO',
+            ]
+        );
+        if ($rolSecretaria) {
+            $secretaria->roles()->sync([$rolSecretaria->id]);
+        }
+
+        $caja = Usuario::withoutGlobalScopes()->updateOrCreate(
+            ['email' => 'caja@edux.demo'],
+            [
+                'institucion_id'   => $institucion->id,
+                'username'         => 'caja',
+                'password'         => Hash::make('Caja2026!'),
+                'nombres'          => 'Luis',
+                'apellido_paterno' => 'Saldaña',
+                'apellido_materno' => 'Pérez',
+                'estado'           => 'ACTIVO',
+            ]
+        );
+        if ($rolCaja) {
+            $caja->roles()->sync([$rolCaja->id]);
+        }
+
+        $mesaPartes = Usuario::withoutGlobalScopes()->updateOrCreate(
+            ['email' => 'mesa.partes@edux.demo'],
+            [
+                'institucion_id'   => $institucion->id,
+                'username'         => 'mesa.partes',
+                'password'         => Hash::make('Mesa2026!'),
+                'nombres'          => 'Carmen',
+                'apellido_paterno' => 'Castillo',
+                'apellido_materno' => 'Vera',
+                'estado'           => 'ACTIVO',
+            ]
+        );
+        if ($rolMesa) {
+            $mesaPartes->roles()->sync([$rolMesa->id]);
+        }
 
         // ── 8. Coordinadores por Programa ─────────────────────────────────
         $coordEnf = Usuario::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'coord.enf@modux.demo'],
+            ['email' => 'coord.enf@edux.demo'],
             [
                 'institucion_id'      => $institucion->id,
                 'unidad_academica_id' => $programas['PROG-ENF']->id,
@@ -182,7 +236,7 @@ class InstitucionDemoSeeder extends Seeder
         }
 
         $coordDpw = Usuario::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'coord.dpw@modux.demo'],
+            ['email' => 'coord.dpw@edux.demo'],
             [
                 'institucion_id'      => $institucion->id,
                 'unidad_academica_id' => $programas['PROG-DPW']->id,
@@ -200,14 +254,14 @@ class InstitucionDemoSeeder extends Seeder
 
         // ── 8. Docentes Vinculados por Programa ───────────────────────────
         $docentesData = [
-            ['username' => 'docente01',     'email' => 'docente01@modux.demo',     'nombres' => 'Maria',  'apellido_pat' => 'Garcia',   'apellido_mat' => 'Salas',     'especialidad' => 'Enfermería y Salud Comunitaria',          'prog_code' => 'PROG-ENF'],
-            ['username' => 'docente.dpw',   'email' => 'docente.dpw@modux.demo',   'nombres' => 'Carlos', 'apellido_pat' => 'Mendoza',  'apellido_mat' => 'Quispe',    'especialidad' => 'Desarrollo Web Fullstack & Cloud',        'prog_code' => 'PROG-DPW'],
-            ['username' => 'docente.cont',  'email' => 'docente.cont@modux.demo',  'nombres' => 'Ana',    'apellido_pat' => 'Palacios', 'apellido_mat' => 'Huaman',    'especialidad' => 'Contabilidad Financiera y Tributaria',    'prog_code' => 'PROG-CONT'],
-            ['username' => 'docente.agro',  'email' => 'docente.agro@modux.demo',  'nombres' => 'Jorge',  'apellido_pat' => 'Rojas',    'apellido_mat' => 'Valdez',    'especialidad' => 'Producción Agropecuaria y Riego',         'prog_code' => 'PROG-AGRO'],
-            ['username' => 'docente.alim',  'email' => 'docente.alim@modux.demo',  'nombres' => 'Lucia',  'apellido_pat' => 'Meza',     'apellido_mat' => 'Campos',    'especialidad' => 'Industrias Alimentarias y Calidad',       'prog_code' => 'PROG-ALIM'],
-            ['username' => 'docente.asis',  'email' => 'docente.asis@modux.demo',  'nombres' => 'Diana',  'apellido_pat' => 'Flores',   'apellido_mat' => 'Rios',      'especialidad' => 'Gestión Documental y Asistencia',         'prog_code' => 'PROG-ASIS'],
-            ['username' => 'docente.farm',  'email' => 'docente.farm@modux.demo',  'nombres' => 'Ruth',   'apellido_pat' => 'Chavez',   'apellido_mat' => 'Medina',    'especialidad' => 'Farmacología y Técnica Farmacéutica',     'prog_code' => 'PROG-FARM'],
-            ['username' => 'docente.mec',   'email' => 'docente.mec@modux.demo',   'nombres' => 'Victor', 'apellido_pat' => 'Sedano',   'apellido_mat' => 'Alvarado',  'especialidad' => 'Mecanizado Industrial CNC y Matricería',  'prog_code' => 'PROG-MEC'],
+            ['username' => 'docente01',     'email' => 'docente01@edux.demo',     'nombres' => 'Maria',  'apellido_pat' => 'Garcia',   'apellido_mat' => 'Salas',     'especialidad' => 'Enfermería y Salud Comunitaria',          'prog_code' => 'PROG-ENF'],
+            ['username' => 'docente.dpw',   'email' => 'docente.dpw@edux.demo',   'nombres' => 'Carlos', 'apellido_pat' => 'Mendoza',  'apellido_mat' => 'Quispe',    'especialidad' => 'Desarrollo Web Fullstack & Cloud',        'prog_code' => 'PROG-DPW'],
+            ['username' => 'docente.cont',  'email' => 'docente.cont@edux.demo',  'nombres' => 'Ana',    'apellido_pat' => 'Palacios', 'apellido_mat' => 'Huaman',    'especialidad' => 'Contabilidad Financiera y Tributaria',    'prog_code' => 'PROG-CONT'],
+            ['username' => 'docente.agro',  'email' => 'docente.agro@edux.demo',  'nombres' => 'Jorge',  'apellido_pat' => 'Rojas',    'apellido_mat' => 'Valdez',    'especialidad' => 'Producción Agropecuaria y Riego',         'prog_code' => 'PROG-AGRO'],
+            ['username' => 'docente.alim',  'email' => 'docente.alim@edux.demo',  'nombres' => 'Lucia',  'apellido_pat' => 'Meza',     'apellido_mat' => 'Campos',    'especialidad' => 'Industrias Alimentarias y Calidad',       'prog_code' => 'PROG-ALIM'],
+            ['username' => 'docente.asis',  'email' => 'docente.asis@edux.demo',  'nombres' => 'Diana',  'apellido_pat' => 'Flores',   'apellido_mat' => 'Rios',      'especialidad' => 'Gestión Documental y Asistencia',         'prog_code' => 'PROG-ASIS'],
+            ['username' => 'docente.farm',  'email' => 'docente.farm@edux.demo',  'nombres' => 'Ruth',   'apellido_pat' => 'Chavez',   'apellido_mat' => 'Medina',    'especialidad' => 'Farmacología y Técnica Farmacéutica',     'prog_code' => 'PROG-FARM'],
+            ['username' => 'docente.mec',   'email' => 'docente.mec@edux.demo',   'nombres' => 'Victor', 'apellido_pat' => 'Sedano',   'apellido_mat' => 'Alvarado',  'especialidad' => 'Mecanizado Industrial CNC y Matricería',  'prog_code' => 'PROG-MEC'],
         ];
 
         $docentesEntities = [];
@@ -244,16 +298,16 @@ class InstitucionDemoSeeder extends Seeder
 
         // ── 9. Estudiantes Vinculados por Programa ─────────────────────────
         $estudiantesData = [
-            ['username' => 'est001', 'email' => 'est001@modux.demo', 'nom' => 'Lucia',   'pat' => 'Huaman',  'mat' => 'Soto',     'code' => 'EST-ENF-001',  'prog' => 'PROG-ENF'],
-            ['username' => 'est002', 'email' => 'est002@modux.demo', 'nom' => 'Pedro',   'pat' => 'Soto',    'mat' => 'Vega',     'code' => 'EST-ENF-002',  'prog' => 'PROG-ENF'],
-            ['username' => 'est003', 'email' => 'est003@modux.demo', 'nom' => 'David',   'pat' => 'Quispe',  'mat' => 'Alarcon',  'code' => 'EST-DPW-003',  'prog' => 'PROG-DPW'],
-            ['username' => 'est004', 'email' => 'est004@modux.demo', 'nom' => 'Sofia',   'pat' => 'Rios',    'mat' => 'Paredes',  'code' => 'EST-DPW-004',  'prog' => 'PROG-DPW'],
-            ['username' => 'est005', 'email' => 'est005@modux.demo', 'nom' => 'Juan',    'pat' => 'Poma',    'mat' => 'Diaz',     'code' => 'EST-CONT-005', 'prog' => 'PROG-CONT'],
-            ['username' => 'est006', 'email' => 'est006@modux.demo', 'nom' => 'Rosa',    'pat' => 'Castro',  'mat' => 'Ramos',    'code' => 'EST-AGRO-006', 'prog' => 'PROG-AGRO'],
-            ['username' => 'est007', 'email' => 'est007@modux.demo', 'nom' => 'Marcos',  'pat' => 'Meza',    'mat' => 'Chavez',   'code' => 'EST-ALIM-007', 'prog' => 'PROG-ALIM'],
-            ['username' => 'est008', 'email' => 'est008@modux.demo', 'nom' => 'Elena',   'pat' => 'Torres',  'mat' => 'Gomez',    'code' => 'EST-ASIS-008', 'prog' => 'PROG-ASIS'],
-            ['username' => 'est009', 'email' => 'est009@modux.demo', 'nom' => 'Gabriela','pat' => 'Astudillo','mat' => 'Perez',  'code' => 'EST-FARM-009', 'prog' => 'PROG-FARM'],
-            ['username' => 'est010', 'email' => 'est010@modux.demo', 'nom' => 'Walter',  'pat' => 'Carbajal', 'mat' => 'Leon',    'code' => 'EST-MEC-010',  'prog' => 'PROG-MEC'],
+            ['username' => 'est001', 'email' => 'est001@edux.demo', 'nom' => 'Lucia',   'pat' => 'Huaman',  'mat' => 'Soto',     'code' => 'EST-ENF-001',  'prog' => 'PROG-ENF'],
+            ['username' => 'est002', 'email' => 'est002@edux.demo', 'nom' => 'Pedro',   'pat' => 'Soto',    'mat' => 'Vega',     'code' => 'EST-ENF-002',  'prog' => 'PROG-ENF'],
+            ['username' => 'est003', 'email' => 'est003@edux.demo', 'nom' => 'David',   'pat' => 'Quispe',  'mat' => 'Alarcon',  'code' => 'EST-DPW-003',  'prog' => 'PROG-DPW'],
+            ['username' => 'est004', 'email' => 'est004@edux.demo', 'nom' => 'Sofia',   'pat' => 'Rios',    'mat' => 'Paredes',  'code' => 'EST-DPW-004',  'prog' => 'PROG-DPW'],
+            ['username' => 'est005', 'email' => 'est005@edux.demo', 'nom' => 'Juan',    'pat' => 'Poma',    'mat' => 'Diaz',     'code' => 'EST-CONT-005', 'prog' => 'PROG-CONT'],
+            ['username' => 'est006', 'email' => 'est006@edux.demo', 'nom' => 'Rosa',    'pat' => 'Castro',  'mat' => 'Ramos',    'code' => 'EST-AGRO-006', 'prog' => 'PROG-AGRO'],
+            ['username' => 'est007', 'email' => 'est007@edux.demo', 'nom' => 'Marcos',  'pat' => 'Meza',    'mat' => 'Chavez',   'code' => 'EST-ALIM-007', 'prog' => 'PROG-ALIM'],
+            ['username' => 'est008', 'email' => 'est008@edux.demo', 'nom' => 'Elena',   'pat' => 'Torres',  'mat' => 'Gomez',    'code' => 'EST-ASIS-008', 'prog' => 'PROG-ASIS'],
+            ['username' => 'est009', 'email' => 'est009@edux.demo', 'nom' => 'Gabriela','pat' => 'Astudillo','mat' => 'Perez',  'code' => 'EST-FARM-009', 'prog' => 'PROG-FARM'],
+            ['username' => 'est010', 'email' => 'est010@edux.demo', 'nom' => 'Walter',  'pat' => 'Carbajal', 'mat' => 'Leon',    'code' => 'EST-MEC-010',  'prog' => 'PROG-MEC'],
         ];
 
         $estudiantesEntities = [];
@@ -302,6 +356,45 @@ class InstitucionDemoSeeder extends Seeder
             );
         }
 
+        // ── 10. Apoderado ────────────────────────────────────────────────
+        $uApoderado = Usuario::withoutGlobalScopes()->updateOrCreate(
+            ['email' => 'apoderado01@edux.demo'],
+            [
+                'institucion_id'   => $institucion->id,
+                'username'         => 'apoderado01',
+                'password'         => Hash::make(env('PADRE_INITIAL_PASSWORD', 'Padre2026!')),
+                'nombres'          => 'Carlos',
+                'apellido_paterno' => 'Huaman',
+                'apellido_materno' => 'Padre',
+                'estado'           => 'ACTIVO',
+            ]
+        );
+        if ($rolApoderado) {
+            $uApoderado->roles()->sync([$rolApoderado->id]);
+        }
+
+        $apoderado = Apoderado::withoutGlobalScopes()->updateOrCreate(
+            ['usuario_id' => $uApoderado->id],
+            [
+                'institucion_id' => $institucion->id,
+                'nombres'        => 'Carlos',
+                'apellidos'      => 'Huaman Padre',
+                'telefono'       => '987654321',
+            ]
+        );
+
+        if (isset($estudiantesEntities['est001'])) {
+            EstudianteApoderado::firstOrCreate(
+                [
+                    'estudiante_id' => $estudiantesEntities['est001']->id,
+                    'apoderado_id'  => $apoderado->id,
+                ],
+                [
+                    'parentesco'   => 'PADRE',
+                    'es_principal' => true,
+                ]
+            );
+        }
 
         // ── 11. Ambientes de Formación Práctica ───────────────────────────
         $ambientesData = [

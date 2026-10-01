@@ -1,96 +1,4 @@
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: aula_backend
-    restart: unless-stopped
-    volumes:
-      - ./backend:/var/www/html
-      - storage_data:/var/www/html/storage/app
-    environment:
-      APP_ENV: local
-      APP_KEY: base64:placeholder_run_php_artisan_key_generate
-      APP_DEBUG: true
-      APP_URL: http://localhost:8080
-      DB_CONNECTION: pgsql
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_DATABASE: aula_virtual
-      DB_USERNAME: postgres
-      DB_PASSWORD: secret_password
-      CACHE_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      SESSION_DRIVER: redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: 1025
-      MAIL_FROM_ADDRESS: noreply@aulav.local
-      MAIL_FROM_NAME: "Aula Virtual"
-      SANCTUM_STATEFUL_DOMAINS: localhost:3000,localhost:8080
-    depends_on:
-      database:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - aula_net
-
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: aula_worker
-    restart: unless-stopped
-    command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=90
-    volumes:
-      - ./backend:/var/www/html
-      - storage_data:/var/www/html/storage/app
-    environment:
-      APP_ENV: local
-      APP_KEY: base64:placeholder_run_php_artisan_key_generate
-      DB_CONNECTION: pgsql
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_DATABASE: aula_virtual
-      DB_USERNAME: postgres
-      DB_PASSWORD: secret_password
-      CACHE_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      SESSION_DRIVER: redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    depends_on:
-      - backend
-    networks:
-      - aula_net
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: aula_frontend
-    restart: unless-stopped
-    networks:
-      - aula_net
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: aula_nginx
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./backend/public:/var/www/html/public:ro
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - aula_net
-
   database:
     image: postgres:16-alpine
     container_name: aula_postgres
@@ -105,8 +13,8 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aula_virtual"]
+      interval: 10s
       timeout: 5s
       retries: 5
     networks:
@@ -136,6 +44,96 @@ services:
     networks:
       - aula_net
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aula_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+      - storage_data:/var/www/html/storage/app
+    working_dir: /var/www/html
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aula_net
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aula_worker
+    restart: unless-stopped
+    command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=90
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+      - storage_data:/var/www/html/storage/app
+    working_dir: /var/www/html
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aula_net
+
+  frontend:
+    image: aula-frontend-dev:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: aula_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - node_modules:/app/node_modules
+    command: npm run dev -- --host
+    networks:
+      - aula_net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: aula_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend/public:/var/www/html/public:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - aula_net
+
+  e2e:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.e2e
+    image: aula-e2e:latest
+    container_name: aula_e2e
+    environment:
+      - PLAYWRIGHT_BASE_URL=http://nginx
+    depends_on:
+      - nginx
+    networks:
+      - aula_net
+    profiles: ["testing"]
+    command: npx playwright test
+
 volumes:
   pgdata:
     driver: local
@@ -143,6 +141,8 @@ volumes:
     driver: local
   storage_data:
     driver: local
+  node_modules:
+  backend_vendor:
 
 networks:
   aula_net:

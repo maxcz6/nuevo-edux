@@ -34,10 +34,32 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('apoderados', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('institucion_id')->constrained('instituciones');
+            $table->foreignId('usuario_id')->nullable()->constrained('usuarios');
+            $table->string('nombres', 120);
+            $table->string('apellidos', 150);
+            $table->string('documento_numero', 20)->nullable();
+            $table->string('telefono', 30)->nullable();
+            $table->string('correo', 150)->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('estudiante_apoderado', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('estudiante_id')->constrained('estudiantes')->cascadeOnDelete();
+            $table->foreignId('apoderado_id')->constrained('apoderados')->cascadeOnDelete();
+            $table->string('parentesco', 50)->nullable();
+            $table->boolean('es_principal')->default(false);
+            $table->unique(['estudiante_id', 'apoderado_id']);
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('estudiante_apoderado');
+        Schema::dropIfExists('apoderados');
         Schema::dropIfExists('estudiantes');
         Schema::dropIfExists('docentes');
     }

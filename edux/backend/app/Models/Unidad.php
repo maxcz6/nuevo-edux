@@ -9,7 +9,24 @@ class Unidad extends Model
 {
     protected $table = 'unidades';
     
-    protected $fillable = ['grupo_curso_id', 'titulo', 'descripcion', 'orden', 'estado'];
+    protected $fillable = [
+        'grupo_curso_id',
+        'titulo',
+        'descripcion',
+        'orden',
+        'fecha_inicio',
+        'fecha_fin',
+        'visible_desde',
+        'visible_hasta',
+        'estado',
+    ];
+
+    protected $casts = [
+        'fecha_inicio'  => 'date:Y-m-d',
+        'fecha_fin'     => 'date:Y-m-d',
+        'visible_desde' => 'datetime',
+        'visible_hasta' => 'datetime',
+    ];
 
     public function grupoCurso(): BelongsTo
     {

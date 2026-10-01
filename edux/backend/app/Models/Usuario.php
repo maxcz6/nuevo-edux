@@ -87,6 +87,10 @@ class Usuario extends Authenticatable
         return $this->hasOne(Estudiante::class, 'usuario_id');
     }
 
+    public function apoderado(): HasOne
+    {
+        return $this->hasOne(Apoderado::class, 'usuario_id');
+    }
 
     public function institucion(): BelongsTo
     {
@@ -128,6 +132,15 @@ class Usuario extends Authenticatable
     {
         $this->loadMissing('roles');
         return $this->roles->contains('nombre', $nombre);
+    }
+
+    /**
+     * Verifica si el usuario tiene al menos uno de los roles indicados.
+     */
+    public function hasAnyRole(array $nombres): bool
+    {
+        $this->loadMissing('roles');
+        return $this->roles->contains(fn ($rol) => in_array($rol->nombre, $nombres));
     }
 
     /**

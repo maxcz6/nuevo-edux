@@ -29,8 +29,16 @@ class AuthController extends Controller
             'institucion_id' => 'nullable|integer|exists:instituciones,id',
         ]);
 
+        $email = $request->email;
+        $alternateEmail = str_contains($email, '@modux.demo')
+            ? str_replace('@modux.demo', '@edux.demo', $email)
+            : (str_contains($email, '@edux.demo') ? str_replace('@edux.demo', '@modux.demo', $email) : $email);
+
         $query = Usuario::withoutGlobalScopes()
-            ->where('email', $request->email)
+            ->where(function ($q) use ($email, $alternateEmail) {
+                $q->where('email', $email)
+                  ->orWhere('email', $alternateEmail);
+            })
             ->where('estado', 'ACTIVO');
 
         if ($request->filled('institucion_id')) {
@@ -197,7 +205,7 @@ class AuthController extends Controller
                 $url .= '&institucion_id=' . $usuario->institucion_id;
             }
 
-            $instNombre = $usuario->institucion?->nombre ?? 'Modux';
+            $instNombre = $usuario->institucion?->nombre ?? 'Edux';
             $userEmail = $usuario->email;
             $userNombres = $usuario->nombres;
 

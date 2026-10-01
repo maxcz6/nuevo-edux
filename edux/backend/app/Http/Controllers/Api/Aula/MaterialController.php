@@ -22,12 +22,16 @@ class MaterialController extends Controller
             $query->where('sesion_id', $request->sesion_id);
         }
 
-        // Estudiantes solo ven materiales activos y cuya fecha visible_desde ya se haya cumplido
+        // Estudiantes solo ven materiales activos y cuya ventana de visibilidad esté vigente
         if ($user->hasRole('ESTUDIANTE')) {
             $query->where('estado', 'ACTIVO')
                   ->where(function ($q) {
                       $q->whereNull('visible_desde')
                         ->orWhere('visible_desde', '<=', now());
+                  })
+                  ->where(function ($q) {
+                      $q->whereNull('visible_hasta')
+                        ->orWhere('visible_hasta', '>=', now());
                   });
         }
 
@@ -57,6 +61,8 @@ class MaterialController extends Controller
             'enlace_externo' => 'required_if:tipo,ENLACE|nullable|url|max:255',
             'archivo'        => 'required_unless:tipo,ENLACE|nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,png,mp4,zip|max:20480',
             'visible_desde'  => 'nullable|date',
+            'visible_hasta'  => 'nullable|date',
+            'estado'         => 'nullable|in:ACTIVO,INACTIVO',
             'sesion_id'      => [
                 'nullable', 'integer',
                 function ($attr, $val, $fail) use ($unidadModel) {
@@ -115,7 +121,8 @@ class MaterialController extends Controller
             'archivo_url'    => $path,
             'enlace_externo' => ($tipo === 'ENLACE') ? ($validated['enlace_externo'] ?? null) : null,
             'visible_desde'  => $validated['visible_desde'] ?? null,
-            'estado'         => 'ACTIVO'
+            'visible_hasta'  => $validated['visible_hasta'] ?? null,
+            'estado'         => $validated['estado'] ?? 'ACTIVO'
         ]);
 
         return response()->json(['data' => $material, 'message' => 'Material subido exitosamente.'], 201);
@@ -133,6 +140,10 @@ class MaterialController extends Controller
                   ->where(function ($q) {
                       $q->whereNull('visible_desde')
                         ->orWhere('visible_desde', '<=', now());
+                  })
+                  ->where(function ($q) {
+                      $q->whereNull('visible_hasta')
+                        ->orWhere('visible_hasta', '>=', now());
                   });
         }
 
@@ -153,7 +164,9 @@ class MaterialController extends Controller
             'enlace_externo' => 'nullable|url|max:255',
             'archivo'        => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,png,mp4,zip|max:20480',
             'visible_desde'  => 'nullable|date',
+            'visible_hasta'  => 'nullable|date',
             'estado'         => 'sometimes|in:ACTIVO,INACTIVO',
+            'sesion_id'      => 'nullable|integer',
         ]);
 
         $targetTipo = $request->input('tipo', $material->tipo);
@@ -202,7 +215,9 @@ class MaterialController extends Controller
                     'errors'  => ['archivo' => ['Debe adjuntar un archivo para materiales de tipo documento.']]
                 ], 422);
             }
-            $material->enlace_externo = null;
+            if ($request->hasFile('archivo')) {
+                $material->enlace_externo = null;
+            }
         }
 
         if ($request->has('titulo')) {
@@ -212,11 +227,17 @@ class MaterialController extends Controller
             $material->descripcion = $validated['descripcion'];
         }
         $material->tipo = $targetTipo;
-        if ($request->has('visible_desde')) {
+        if (array_key_exists('visible_desde', $validated)) {
             $material->visible_desde = $validated['visible_desde'];
+        }
+        if (array_key_exists('visible_hasta', $validated)) {
+            $material->visible_hasta = $validated['visible_hasta'];
         }
         if ($request->has('estado')) {
             $material->estado = $validated['estado'];
+        }
+        if (array_key_exists('sesion_id', $validated)) {
+            $material->sesion_id = $validated['sesion_id'];
         }
 
         $material->save();
@@ -244,7 +265,10 @@ class MaterialController extends Controller
         $user = auth()->user();
 
         if ($user->hasRole('ESTUDIANTE')) {
-            if ($material->estado !== 'ACTIVO' || ($material->visible_desde && $material->visible_desde->isFuture())) {
+            if ($material->estado !== 'ACTIVO' 
+                || ($material->visible_desde && $material->visible_desde->isFuture())
+                || ($material->visible_hasta && $material->visible_hasta->isPast())
+            ) {
                 abort(response()->json(['message' => 'El material no está disponible para descarga.', 'error' => 'forbidden'], 403));
             }
         }

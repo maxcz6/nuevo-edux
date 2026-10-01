@@ -4,6 +4,7 @@ import { useRouter, useRoute, RouterView, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
+import NotificationBell from '@/components/ui/NotificationBell.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -149,6 +150,7 @@ const logout = async () => {
         </div>
 
         <div class="flex items-center gap-3">
+          <NotificationBell />
           <ThemeToggle />
           <div class="flex items-center gap-2.5">
             <span class="text-xs font-bold text-slate-800 dark:text-slate-100 hidden sm:inline">{{ authStore.user?.nombres }} {{ authStore.user?.apellido_paterno }}</span>

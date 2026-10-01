@@ -13,6 +13,8 @@ class EntregaTarea extends Model
         'tarea_id',
         'estudiante_id',
         'archivo_url',
+        'archivo_original',
+        'archivo_nombre',
         'comentario_estudiante',
         'fecha_entrega',
         'es_tardia',
@@ -34,6 +36,15 @@ class EntregaTarea extends Model
         'fecha_entrega' => 'datetime',
         'es_tardia' => 'boolean',
     ];
+
+    public function getArchivoOriginalAttribute($value)
+    {
+        if ($value) return $value;
+        if (!empty($this->attributes['archivo_url'])) {
+            return basename($this->attributes['archivo_url']);
+        }
+        return null;
+    }
 
     public function getTieneArchivoAttribute(): bool
     {

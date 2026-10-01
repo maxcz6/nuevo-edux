@@ -16,6 +16,10 @@ class Evaluacion extends Model
         'docente_id',
         'titulo',
         'instrucciones',
+        'archivo_adjunto',
+        'archivo_nombre_original',
+        'tipo_evaluacion',
+        'permite_archivo_estudiante',
         'puntaje_maximo',
         'duracion_minutos',
         'intentos_permitidos',
@@ -24,13 +28,27 @@ class Evaluacion extends Model
         'estado',
     ];
 
-    protected $casts = [
-        'puntaje_maximo'      => 'decimal:2',
-        'duracion_minutos'    => 'integer',
-        'intentos_permitidos' => 'integer',
-        'fecha_inicio'        => 'datetime',
-        'fecha_fin'           => 'datetime',
+    protected $hidden = [
+        'archivo_adjunto',
     ];
+
+    protected $appends = [
+        'tiene_archivo_adjunto',
+    ];
+
+    protected $casts = [
+        'puntaje_maximo'             => 'decimal:2',
+        'duracion_minutos'           => 'integer',
+        'intentos_permitidos'        => 'integer',
+        'permite_archivo_estudiante' => 'boolean',
+        'fecha_inicio'               => 'datetime',
+        'fecha_fin'                  => 'datetime',
+    ];
+
+    public function getTieneArchivoAdjuntoAttribute(): bool
+    {
+        return !empty($this->attributes['archivo_adjunto'] ?? null);
+    }
 
     public function grupoCurso(): BelongsTo
     {

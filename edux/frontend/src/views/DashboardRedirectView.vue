@@ -23,7 +23,6 @@ onMounted(async () => {
     }
   }
 
-  // Redirección por los 5 roles esenciales
   if (auth.hasRole('SUPERADMIN') || auth.hasRole('ADMINISTRADOR')) {
     router.replace('/admin/dashboard')
   } else if (auth.hasRole('COORDINADOR')) {
@@ -32,6 +31,8 @@ onMounted(async () => {
     router.replace('/docente/dashboard')
   } else if (auth.hasRole('ESTUDIANTE')) {
     router.replace('/estudiante/dashboard')
+  } else if (auth.hasRole('APODERADO')) {
+    router.replace('/apoderado/dashboard')
   } else if (!auth.isAuthenticated) {
     router.replace('/login')
   } else {

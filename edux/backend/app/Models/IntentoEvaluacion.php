@@ -19,7 +19,19 @@ class IntentoEvaluacion extends Model
         'fecha_inicio',
         'fecha_fin',
         'nota',
+        'archivo_estudiante',
+        'archivo_estudiante_nombre',
+        'comentario_estudiante',
+        'retroalimentacion',
         'estado',
+    ];
+
+    protected $hidden = [
+        'archivo_estudiante',
+    ];
+
+    protected $appends = [
+        'tiene_archivo_estudiante',
     ];
 
     protected $casts = [
@@ -28,6 +40,11 @@ class IntentoEvaluacion extends Model
         'fecha_fin'      => 'datetime',
         'nota'           => 'decimal:2',
     ];
+
+    public function getTieneArchivoEstudianteAttribute(): bool
+    {
+        return !empty($this->attributes['archivo_estudiante'] ?? null);
+    }
 
     public function evaluacion(): BelongsTo
     {
